@@ -1,0 +1,79 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "enanandesu/mp3/internal/header"
+
+// Values
+pub fn parse(Bytes, offset? : Int) -> Result[Header, HeaderError]
+
+// Errors
+
+// Types and methods
+pub(all) enum ChannelMode {
+  Stereo
+  JointStereo
+  DualChannel
+  Mono
+}
+pub impl Eq for ChannelMode
+pub impl Show for ChannelMode
+
+pub(all) enum Emphasis {
+  NoEmphasis
+  FiftyFifteen
+  CcitJ17
+}
+pub impl Eq for Emphasis
+pub impl Show for Emphasis
+
+pub struct Header {
+  version : Version
+  bitrate_kbps : Int?
+  sample_rate_hz : Int
+  padding : Bool
+  crc_protected : Bool
+  channel_mode : ChannelMode
+  mode_extension : Int
+  private_bit : Bool
+  copyright : Bool
+  original : Bool
+  emphasis : Emphasis
+}
+pub fn Header::channels(Self) -> Int
+pub fn Header::crc_bytes(Self) -> Int
+pub fn Header::frame_bytes(Self, free_format_size? : Int) -> Result[Int?, HeaderError]
+pub fn Header::intensity_stereo(Self) -> Bool
+pub fn Header::main_data_offset(Self) -> Int
+pub fn Header::mid_side_stereo(Self) -> Bool
+pub fn Header::samples_per_frame(Self) -> Int
+pub fn Header::side_info_bytes(Self) -> Int
+pub fn Header::stream_compatible(Self, Self) -> Bool
+pub fn Header::sync_compatible(Self, Self) -> Bool
+pub impl Eq for Header
+pub impl Show for Header
+
+pub(all) enum HeaderError {
+  InvalidOffset(Int)
+  Truncated(available~ : Int)
+  InvalidSync
+  ReservedVersion
+  ReservedLayer
+  UnsupportedLayer(Int)
+  InvalidBitrateIndex
+  InvalidSampleRateIndex
+  ReservedEmphasis
+  InvalidFreeFormatSize(Int)
+}
+pub impl Eq for HeaderError
+pub impl Show for HeaderError
+
+pub(all) enum Version {
+  Mpeg1
+  Mpeg2
+  Mpeg25
+}
+pub impl Eq for Version
+pub impl Show for Version
+
+// Type aliases
+
+// Traits
+
