@@ -1,0 +1,42 @@
+{
+  "system": "Windows",
+  "machine": "AMD64",
+  "upstream_commit": "ea99364f61c14656440e8d77e9c233ccf3124633",
+  "upstream_files": {
+    "minimp3.h": "57e437c5c1f0e8b243885d3929c8973b5e6c778451e0100ab4251d19915cb3ad",
+    "minimp3_ex.h": "8437f3fc1d4d8ab2269a1624f5380a08df1967a048f8887789bae6e25db7db79",
+    "minimp3_test.c": "b9432b7143a988613d983c0dfd046a56ba0d69738b852588f350e8876affb122",
+    "LICENSE": "6a1ee543e5282cd9061881edf462e6fdab181f328da71fc2c9a6950a80e94d01",
+    "README.md": "ce8a219c5783d7b991070a7aca4c31f8dfcafc183925bf947b80b835ed36b45d"
+  },
+  "tools": {
+    "moon": {
+      "version": "moon 0.1.20251222 (3f6c70c 2025-12-22)",
+      "executable_sha256": "e734fd5da7a1ebc52ac9059d2beaa120fb4f84bad16503e4361598e71fab6802"
+    },
+    "moonc": {
+      "version": "v0.6.36+607dbed8f (2025-12-22)",
+      "executable_sha256": "e70e267f544fb272da0eadf6e4b84cedc9cfb3a996b606d6c37c6ea3c64ec16f"
+    },
+    "gcc": {
+      "version": "15.2.0",
+      "executable_sha256": "00152b08fa777c5ef4d7697620032a48129482970e55714362c7a8691b62e30e"
+    },
+    "python": {
+      "version": "Python 3.13.9",
+      "executable_sha256": "7679e53fa969789309e81fdad0d52b8cda5f83c9abf7cb31a3c58bf24b31e264"
+    },
+    "node": {
+      "version": "v20.17.0",
+      "executable_sha256": "0740b4a681b320f966b57f51c87c11f897e8605064b6ae62d03e177bc66f01b9"
+    },
+    "ffmpeg": {
+      "version": "ffmpeg version 2024-10-13-git-e347b4ff31-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+      "executable_sha256": "b94788cfc5d2fd9b94d30e38a456383929885b584434e1e0effb2d1eab3a36a5"
+    },
+    "ffprobe": {
+      "version": "ffprobe version 2024-10-13-git-e347b4ff31-essentials_build-www.gyan.dev Copyright (c) 2007-2024 the FFmpeg developers",
+      "executable_sha256": "afdb2836f7b6207d0146789b16dac9c91fd799bfa52b75369511c2625f20495f"
+    }
+  }
+}

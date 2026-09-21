@@ -1,0 +1,11 @@
+*.mbt text eol=lf
+*.mbti text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.c text eol=lf
+*.md text eol=lf
+# Preserve the upstream Git blobs, including their original whitespace.
+third_party/minimp3/* -text -whitespace
+*.bit -text
+*.mp3 -text
+*.pcm -text
