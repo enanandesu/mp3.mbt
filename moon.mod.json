@@ -1,0 +1,8 @@
+{
+  "name": "enanandesu/mp3",
+  "version": "0.1.0",
+  "readme": "README.md",
+  "keywords": ["mp3", "audio", "decoder"],
+  "description": "A pure MoonBit MP3 decoder library (under development).",
+  "preferred-target": "wasm-gc"
+}
