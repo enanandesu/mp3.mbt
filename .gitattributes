@@ -1,5 +1,5 @@
 *.mbt text eol=lf
-*.mbti text eol=lf
+*.mbti text eol=lf whitespace=-blank-at-eof
 *.json text eol=lf
 *.py text eol=lf
 *.c text eol=lf

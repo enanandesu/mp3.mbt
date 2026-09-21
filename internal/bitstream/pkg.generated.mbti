@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "enanandesu/mp3/internal/bitstream"
+
+// Values
+
+// Errors
+
+// Types and methods
+type BitReader
+pub fn BitReader::new(Bytes) -> Self
+pub fn BitReader::position(Self) -> Int64
+pub fn BitReader::read_bits(Self, Int) -> Result[UInt, BitstreamError]
+pub fn BitReader::remaining(Self) -> Int64
+pub fn BitReader::skip_bits(Self, Int) -> Result[Unit, BitstreamError]
+
+pub(all) enum BitstreamError {
+  InvalidWidth(Int)
+  NegativeSkip(Int)
+  UnexpectedEnd(requested~ : Int, remaining~ : Int64)
+}
+pub impl Eq for BitstreamError
+pub impl Show for BitstreamError
+
+// Type aliases
+
+// Traits
+
