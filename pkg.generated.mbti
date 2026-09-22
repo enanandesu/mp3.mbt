@@ -1,11 +1,33 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3"
 
+import(
+  "enanandesu/mp3/internal/layer3"
+)
+
 // Values
+pub fn decode_mpeg1(Bytes, max_output_samples? : Int, max_initial_scan? : Int) -> Audio raise Mp3Error
 
 // Errors
+pub(all) suberror Mp3Error {
+  InvalidHeader(Int)
+  InvalidTag
+  TruncatedFrame(Int, Int)
+  UnsupportedVersion
+  UnsupportedFreeFormat
+  OutputLimit
+  NoAudio
+  DecodeFailure(Int, @layer3.DecodeError)
+}
+pub impl Eq for Mp3Error
+pub impl Show for Mp3Error
 
 // Types and methods
+pub struct Audio {
+  sample_rate : Int
+  channels : Int
+  samples : Array[Float]
+}
 
 // Type aliases
 

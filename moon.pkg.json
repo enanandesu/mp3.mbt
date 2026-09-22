@@ -1,1 +1,7 @@
-{}
+{
+  "import": [
+    "enanandesu/mp3/internal/header",
+    "enanandesu/mp3/internal/tags",
+    "enanandesu/mp3/internal/layer3"
+  ]
+}

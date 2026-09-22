@@ -1,0 +1,73 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "enanandesu/mp3/internal/layer3"
+
+import(
+  "enanandesu/mp3/internal/header"
+)
+
+// Values
+pub fn read_side_info(Bytes, @header.Header) -> SideInfo raise DecodeError
+
+// Errors
+pub(all) suberror DecodeError {
+  InvalidSideInfo(String)
+  BitBudget(Int, Int, Int)
+  InsufficientHistory(Int, Int)
+  UnsupportedVersion
+  InvalidFrame(String)
+}
+pub impl Eq for DecodeError
+pub impl Show for DecodeError
+
+// Types and methods
+pub struct FrameDecoder {
+  reservoir : Reservoir
+  overlap : Array[Array[Float]]
+  qmf : Array[Float]
+  mut previous : @header.Header?
+  mut failed : Bool
+}
+pub fn FrameDecoder::decode_frame(Self, Bytes) -> Array[Float] raise DecodeError
+pub fn FrameDecoder::new() -> Self
+pub fn FrameDecoder::reset(Self) -> Unit
+
+pub struct GranuleInfo {
+  sfbtab : Array[Int]
+  part_23_length : Int
+  big_values : Int
+  scalefac_compress : Int
+  global_gain : Int
+  block_type : Int
+  mixed_block_flag : Int
+  n_long_sfb : Int
+  n_short_sfb : Int
+  table_select : Array[Int]
+  region_count : Array[Int]
+  subblock_gain : Array[Int]
+  preflag : Int
+  scalefac_scale : Int
+  count1_table : Int
+  scfsi : Int
+}
+pub impl Eq for GranuleInfo
+pub impl Show for GranuleInfo
+
+pub struct Reservoir {
+  mut history : Bytes
+}
+pub fn Reservoir::new() -> Self
+pub fn Reservoir::reset(Self) -> Unit
+pub fn Reservoir::restore(Self, Bytes, Int) -> Bytes raise DecodeError
+pub fn Reservoir::save(Self, Bytes, Int) -> Unit raise DecodeError
+
+pub struct SideInfo {
+  main_data_begin : Int
+  granules : Array[GranuleInfo]
+}
+pub impl Eq for SideInfo
+pub impl Show for SideInfo
+
+// Type aliases
+
+// Traits
+

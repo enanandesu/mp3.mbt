@@ -1,0 +1,35 @@
+// Test adapter only: C supplies bytes and stores f32 PCM, never decodes audio.
+
+///|
+extern "C" fn input_length() -> Int = "validation_input_length"
+
+///|
+extern "C" fn input_byte(index : Int) -> Int = "validation_input_byte"
+
+///|
+extern "C" fn output_sample(value : Float) -> Unit = "validation_output_sample"
+
+///|
+extern "C" fn close_output() -> Unit = "validation_close_output"
+
+///|
+extern "C" fn fail() -> Unit = "validation_fail"
+
+///|
+fn main {
+  let size = input_length()
+  let data = Bytes::from_array(Array::makei(size, i => input_byte(i).to_byte()))
+  try {
+    let audio = @mp3.decode_mpeg1(data)
+    for value in audio.samples {
+      output_sample(value)
+    }
+    close_output()
+    println("\{audio.sample_rate} \{audio.channels} \{audio.samples.length()}")
+  } catch {
+    error => {
+      println(error)
+      fail()
+    }
+  }
+}

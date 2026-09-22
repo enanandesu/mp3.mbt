@@ -1,0 +1,128 @@
+// Validation template, instantiated only beneath ignored target/.
+///|
+priv struct TraceReader {
+  data : Bytes
+  mut pos : Int
+}
+
+///|
+fn TraceReader::word(self : TraceReader) -> UInt {
+  let p = self.pos
+  self.pos += 4
+  self.data[p].to_uint() | (self.data[p + 1].to_uint() << 8) |
+    (self.data[p + 2].to_uint() << 16) | (self.data[p + 3].to_uint() << 24)
+}
+
+///|
+fn TraceReader::number(self : TraceReader) -> Int {
+  self.word().reinterpret_as_int()
+}
+
+///|
+fn TraceReader::bytes(self : TraceReader, size : Int) -> Bytes {
+  let data = self.data[self.pos:self.pos + size].to_bytes()
+  self.pos += size
+  data
+}
+
+///|
+fn TraceReader::floats(self : TraceReader, actual : Array[Float], stage : String) -> Unit raise {
+  for i = 0; i < actual.length(); i = i + 1 {
+    let expected = self.word()
+    assert_eq(actual[i].reinterpret_as_uint(), expected,
+      msg="first divergent checkpoint: \{stage} sample \{i}")
+  }
+}
+
+///|
+fn trace_bytes(chunks : Array[Bytes]) -> Bytes {
+  let data : Array[Byte] = []
+  for chunk in chunks { for value in chunk { data.push(value) } }
+  Bytes::from_array(data)
+}
+
+///|
+fn check_continuous_trace(data : Bytes, expected : Bytes, expected_frames : Int) -> Unit raise {
+  let trace = TraceReader::{ data: expected, pos: 0 }
+  assert_eq(trace.word(), 0x3352504dU)
+  assert_eq(trace.number(), 1)
+  let reservoir = Reservoir::new()
+  let overlap : Array[Array[Float]] = [Array::make(288, 0.0), Array::make(288, 0.0)]
+  let qmf : Array[Float] = Array::make(960, 0.0)
+  let complete_decoder = FrameDecoder::new()
+  let mut frames = 0
+  while trace.pos < expected.length() {
+    let offset = trace.number()
+    let size = trace.number()
+    let channels = trace.number()
+    let hz = trace.number()
+    let main_begin = trace.number()
+    let main_length = trace.number()
+    let frame = data[offset:offset + size].to_bytes()
+    let header = @header.parse(frame).unwrap()
+    assert_eq(header.channels(), channels)
+    assert_eq(header.sample_rate_hz, hz)
+    let side = read_side_info(frame, header)
+    assert_eq(side.main_data_begin, main_begin)
+    let main = reservoir.restore(frame[header.main_data_offset():].to_bytes(), main_begin)
+    assert_eq(main, trace.bytes(main_length))
+    let positions : Array[Array[Int]] = [Array::make(39, 0), Array::make(39, 0)]
+    let frame_pcm : Array[Float] = []
+    let mut consumed = 0
+    for granule = 0; granule < 2; granule = granule + 1 {
+      let label = "frame \{frames} granule \{granule}"
+      let samples : Array[Float] = Array::make(1152, 0.0)
+      for channel = 0; channel < channels; channel = channel + 1 {
+        let gr = side.granules[granule * channels + channel]
+        let fields = [gr.part_23_length, gr.big_values, gr.scalefac_compress,
+          gr.global_gain, gr.block_type, gr.mixed_block_flag, gr.n_long_sfb,
+          gr.n_short_sfb, gr.preflag, gr.scalefac_scale, gr.count1_table, gr.scfsi,
+          gr.table_select[0], gr.table_select[1], gr.table_select[2],
+          gr.region_count[0], gr.region_count[1], gr.region_count[2],
+          gr.subblock_gain[0], gr.subblock_gain[1], gr.subblock_gain[2]]
+        for value in fields { assert_eq(value, trace.number(), msg="\{label} side info") }
+        let before = trace.number()
+        let after_scf = trace.number()
+        let after_huffman = trace.number()
+        assert_eq(consumed, before, msg="\{label} start bit")
+        let end = consumed + gr.part_23_length
+        let bits = BitCursor::new(main, limit=end)
+        bits.pos = consumed
+        let scf = decode_scalefactors(header, positions[channel], bits, gr, channel)
+        assert_eq(bits.pos, after_scf, msg="\{label} scalefactor end bit")
+        for value in positions[channel] { assert_eq(value, trace.number(), msg="\{label} scalefactors") }
+        let padded_scf = Array::makei(40, i => if i < scf.length() { scf[i] } else { 0.0 })
+        trace.floats(padded_scf, "\{label} scale factors")
+        let spectrum : Array[Float] = Array::make(576, 0.0)
+        huffman(spectrum, bits, gr, scf, end)
+        assert_eq(bits.pos, after_huffman, msg="\{label} Huffman end bit")
+        trace.floats(spectrum, "\{label} channel \{channel} dequantization")
+        for i = 0; i < 576; i = i + 1 { samples[channel * 576 + i] = spectrum[i] }
+        consumed = end
+      }
+      if channels == 2 { stereo(samples, positions[1], side.granules[granule * channels], header) }
+      trace.floats(samples, "\{label} stereo")
+      for channel = 0; channel < channels; channel = channel + 1 {
+        hybrid(samples, channel * 576, overlap[channel], side.granules[granule * channels + channel])
+      }
+      trace.floats(samples, "\{label} IMDCT")
+      let pcm = synth_granule(qmf, samples, channels)
+      trace.floats(pcm, "\{label} PCM")
+      for value in pcm { frame_pcm.push(value) }
+      trace.floats(overlap[0], "\{label} left overlap")
+      trace.floats(overlap[1], "\{label} right overlap")
+      trace.floats(qmf, "\{label} synthesis history")
+    }
+    assert_eq(consumed, trace.number())
+    reservoir.save(main, consumed)
+    let saved = trace.number()
+    assert_eq(reservoir.history, trace.bytes(saved))
+    // Also exercise the actual production scheduler on the same uninterrupted
+    // frame sequence, so a correct manually observed pipeline cannot hide an
+    // incorrect FrameDecoder schedule or stale history.
+    assert_eq(complete_decoder.decode_frame(frame), frame_pcm)
+    frames += 1
+  }
+  assert_eq(frames, expected_frames)
+  assert_eq(trace.pos, expected.length())
+}

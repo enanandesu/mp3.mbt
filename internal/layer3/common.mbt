@@ -39,7 +39,9 @@ fn BitCursor::peek_padded(self : BitCursor, count : Int) -> Int {
 
 ///|
 fn BitCursor::read(self : BitCursor, count : Int) -> Int raise DecodeError {
-  if count < 0 || count > 24 || count > self.limit - self.pos ||
+  if count < 0 ||
+    count > 24 ||
+    count > self.limit - self.pos ||
     self.pos + count > self.bytes.length() * 8 {
     raise BitBudget(self.pos, count, self.limit)
   }
@@ -50,7 +52,8 @@ fn BitCursor::read(self : BitCursor, count : Int) -> Int raise DecodeError {
 
 ///|
 fn BitCursor::skip(self : BitCursor, count : Int) -> Unit raise DecodeError {
-  if count < 0 || count > self.limit - self.pos ||
+  if count < 0 ||
+    count > self.limit - self.pos ||
     self.pos + count > self.bytes.length() * 8 {
     raise BitBudget(self.pos, count, self.limit)
   }

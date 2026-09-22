@@ -109,7 +109,11 @@ def main():
     command([sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py", "-v"])
     for backend in ("native", "wasm", "wasm-gc", "js"):
         for operation in ("check", "build", "test"):
-            record = command(["moon", operation, "--target", backend, "--deny-warn"])
+            args = ["moon", operation, "--target", backend, "--deny-warn"]
+            if operation == "test":
+                for package in ("bitstream", "header", "tags"):
+                    args.extend(["--package", f"enanandesu/mp3/internal/{package}"])
+            record = command(args)
             if operation == "test":
                 totals = re.findall(r"Total tests: (\d+), passed: (\d+), failed: (\d+)", record["output"])
                 require(totals == [("27", "27", "0")], f"Unexpected MoonBit test coverage: {record}")
