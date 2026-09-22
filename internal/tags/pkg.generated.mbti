@@ -1,0 +1,55 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "enanandesu/mp3/internal/tags"
+
+// Values
+pub fn inspect_id3v2(BytesView, Bool, Int) -> PrefixResult
+
+pub fn trim_id3v1(BytesView) -> TailInfo
+
+// Errors
+
+// Types and methods
+pub(all) struct Id3v2 {
+  version : Int
+  revision : Int
+  flags : Int
+  payload_bytes : Int
+  total_bytes : Int
+}
+pub impl Eq for Id3v2
+pub impl Show for Id3v2
+
+pub(all) enum PrefixResult {
+  NotATag
+  NeedMoreInput(Int)
+  Invalid(TagError)
+  Tag(Id3v2)
+}
+pub impl Eq for PrefixResult
+pub impl Show for PrefixResult
+
+pub(all) enum TagError {
+  InvalidLimit
+  UnsupportedVersion(Int)
+  InvalidRevision(Int)
+  InvalidFlags(Int)
+  InvalidSynchsafeSize
+  TooLarge(Int)
+  Truncated(Int, Int)
+  InvalidFooter
+}
+pub impl Eq for TagError
+pub impl Show for TagError
+
+pub(all) struct TailInfo {
+  audio_end : Int
+  tag_bytes : Int
+  enhanced : Bool
+}
+pub impl Eq for TailInfo
+pub impl Show for TailInfo
+
+// Type aliases
+
+// Traits
+
