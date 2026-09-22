@@ -46,7 +46,9 @@ def main():
             reference = path.with_suffix(".pcm")
             shutil.copyfile(path, dest)
             shutil.copyfile(reference, dest.with_suffix(".pcm"))
-            add(dest, "out_of_scope" if path.name == "l3-he_mode.bit" else "normal", f"minimp3@{COMMIT}/vectors/{path.name}",
+            category = ("out_of_scope" if path.name == "l3-he_mode.bit" else
+                        "boundary" if path.name in ("l3-compl.bit", "l3-sin1k0db.bit") else "normal")
+            add(dest, category, f"minimp3@{COMMIT}/vectors/{path.name}",
                 reference_pcm=dest.with_suffix(".pcm").relative_to(ROOT).as_posix(),
                 reference_sha256=digest(reference))
     abnormal = ["l3-nonstandard-small.bit", "l3-nonstandard-sideinfo-size.bit",

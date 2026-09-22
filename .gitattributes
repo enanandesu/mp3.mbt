@@ -4,6 +4,8 @@
 *.py text eol=lf
 *.c text eol=lf
 *.md text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
 # Preserve the upstream Git blobs, including their original whitespace.
 third_party/minimp3/* -text -whitespace
 *.bit -text

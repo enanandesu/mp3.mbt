@@ -4,7 +4,7 @@
   "cases": [
     {
       "id": "l3-compl",
-      "category": "normal",
+      "category": "boundary",
       "path": "tests/corpus/upstream/l3-compl.bit",
       "sha256": "3b93f3675821a5af4826abcff7097fa2e42efcc46154e02c992995f7e31dbc8e",
       "bytes": 41495,
@@ -104,7 +104,7 @@
     },
     {
       "id": "l3-sin1k0db",
-      "category": "normal",
+      "category": "boundary",
       "path": "tests/corpus/upstream/l3-sin1k0db.bit",
       "sha256": "64775e23c29aa84e27f68777460f88e0717af2ed64e732d287a20c5a92c9fa3e",
       "bytes": 133120,

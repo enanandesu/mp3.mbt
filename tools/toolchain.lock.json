@@ -18,9 +18,17 @@
       "version": "v0.6.36+607dbed8f (2025-12-22)",
       "executable_sha256": "e70e267f544fb272da0eadf6e4b84cedc9cfb3a996b606d6c37c6ea3c64ec16f"
     },
+    "moonrun": {
+      "version": "moonrun 0.1.20251222 (3f6c70c 2025-12-22)",
+      "executable_sha256": "86dbb3c1f7ba97be6756ccbb6d5e8c3e4aaf9d18c6e6ec7919f3ddf45644d848"
+    },
     "gcc": {
       "version": "15.2.0",
       "executable_sha256": "00152b08fa777c5ef4d7697620032a48129482970e55714362c7a8691b62e30e"
+    },
+    "cc": {
+      "version": "15.2.0",
+      "executable_sha256": "cc25a3283985a7163ca9a7c92ff10006cfb764864caca52e5e1fe3bdbed413cc"
     },
     "python": {
       "version": "Python 3.13.9",
@@ -37,6 +45,13 @@
     "ffprobe": {
       "version": "ffprobe version 2024-10-13-git-e347b4ff31-essentials_build-www.gyan.dev Copyright (c) 2007-2024 the FFmpeg developers",
       "executable_sha256": "afdb2836f7b6207d0146789b16dac9c91fd799bfa52b75369511c2625f20495f"
+    },
+    "moonfmt": {
+      "executable_sha256": "408690b62968bce8ced252fa8d00f7a08bf2f81006ec20d81bbf15a4b70a4996"
+    },
+    "moonbitlang/core": {
+      "version": "0.6.36+607dbed8f",
+      "manifest_sha256": "bdd42805dc2d79b90fc94a3d5537721a9b13528f3e9c2b7b7500ca05a4aa2994"
     }
   }
 }

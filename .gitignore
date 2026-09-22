@@ -5,3 +5,7 @@ target/
 .moonagent/
 .DS_Store
 __pycache__/
+
+# Do not commit stage reports or execution-log archives.
+/evidence/
+/docs/stage*.md

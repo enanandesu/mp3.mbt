@@ -20,7 +20,8 @@ UPSTREAM = {
     "LICENSE": "6a1ee543e5282cd9061881edf462e6fdab181f328da71fc2c9a6950a80e94d01",
     "README.md": "ce8a219c5783d7b991070a7aca4c31f8dfcafc183925bf947b80b835ed36b45d",
 }
-COMMANDS = {"moon": ["version"], "moonc": ["-v"], "gcc": ["-dumpfullversion"],
+COMMANDS = {"moon": ["version"], "moonc": ["-v"], "moonrun": ["--version"],
+            "gcc": ["-dumpfullversion"], "cc": ["-dumpfullversion"],
             "python": ["--version"], "node": ["--version"],
             "ffmpeg": ["-version"], "ffprobe": ["-version"]}
 
@@ -41,6 +42,12 @@ def current():
         process = subprocess.run([executable, *args], capture_output=True, text=True, check=True)
         version = (process.stdout or process.stderr).splitlines()[0].strip()
         tools[name] = {"version": version, "executable_sha256": sha(executable)}
+    formatter = shutil.which("moonfmt")
+    if not formatter:
+        raise RuntimeError("Required tool not found: moonfmt")
+    tools["moonfmt"] = {"executable_sha256": sha(formatter)}
+    core = Path(shutil.which("moon")).resolve().parents[1] / "lib/core/moon.mod.json"
+    tools["moonbitlang/core"] = {"version": json.loads(core.read_text())["version"], "manifest_sha256": sha(core)}
     return {"system": platform.system(), "machine": platform.machine(),
             "upstream_commit": "ea99364f61c14656440e8d77e9c233ccf3124633",
             "upstream_files": UPSTREAM, "tools": tools}
