@@ -1,4 +1,4 @@
-"""Reproduce MPEG-1 side-info tables and continuous C reservoir fixtures.
+"""Reproduce all-version side-info tables and continuous C reservoir fixtures.
 
 Only deterministic source fixtures are persisted. C executables and any
 intermediate artifacts live under ignored target/; no run reports are saved.
@@ -42,6 +42,7 @@ def main() -> None:
     if hashlib.sha256(header).hexdigest() != HEADER_SHA256:
         raise SystemExit("Vendored minimp3 source does not match pinned hash.")
     table_lines = []
+    source_tables = {}
     for kind in ["long", "short", "mixed"]:
         block = re.search(
             rf"g_scf_{kind}\[8\]\[\d+\]\s*=\s*\{{(.*?)\n    \}};",
@@ -50,8 +51,21 @@ def main() -> None:
         rows = [[int(v) for v in re.findall(r"\d+", row)]
                 for row in re.findall(r"\{([^{}]*)\}", block)]
         assert len(rows) == 8
+        source_tables[kind] = rows
+        if kind == "mixed":
+            # Fixed minimp3's 8 kHz row contains 39 bands but declares 6+30;
+            # its first six widths total 48 while mixed IMDCT/reorder starts
+            # at 4*18=72. Build the consistent 36-band mixed layout directly
+            # from the same pinned CC0 long/short tables, never C overreads.
+            corrected = source_tables["long"][1][:6] + source_tables["short"][1][9:]
+            assert len(rows[1]) == 40 and sum(rows[1][:6]) == 48
+            assert sum(corrected[:6]) == 72 and sum(corrected[6:]) == 504
+            assert len(corrected) == 37 and corrected[-1] == 0
+            rows[1] = corrected
+            table_lines += ["// 8 kHz mixed row is derived from pinned long[:6] + short[9:].",
+                            "// This fixes upstream's 48/72 start mismatch and 39/36 band mismatch."]
         table_lines += ["///|", f"let side_scf_{kind} : Array[Array[Int]] = ["]
-        for row in rows[5:]:
+        for row in rows:
             # C zero-fills the remainder of mixed arrays; we retain the
             # meaningful widths and single terminator consumed by the decoder.
             assert sum(row) == 576 and row[-1] == 0
@@ -60,8 +74,8 @@ def main() -> None:
     tables = fmt("\n".join(table_lines), args.formatter)
     source_path = ROOT / "internal/layer3/side_info.mbt"
     source = source_path.read_text(encoding="utf-8")
-    start = "// BEGIN GENERATED MPEG1 SCALEFACTOR BAND WIDTHS\n"
-    end = "// END GENERATED MPEG1 SCALEFACTOR BAND WIDTHS"
+    start = "// BEGIN GENERATED SCALEFACTOR BAND WIDTHS\n"
+    end = "// END GENERATED SCALEFACTOR BAND WIDTHS"
     updated = source.split(start)[0] + start + "\n" + tables + end + source.split(end)[1]
     if args.check:
         if source != updated:
@@ -120,10 +134,10 @@ def main() -> None:
     if args.check:
         if destination.read_bytes() != fixture:
             raise SystemExit("Side-info oracle fixtures differ; regenerate and review.")
-        print(f"Verified {total} continuous C side-info/reservoir vectors and 9 band tables")
+        print(f"Verified {total} continuous C side-info/reservoir vectors and 24 band tables")
     else:
         destination.write_bytes(fixture)
-        print(f"Generated {total} continuous C side-info/reservoir vectors and 9 band tables")
+        print(f"Generated {total} continuous C side-info/reservoir vectors and 24 band tables")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 // Function correspondence: L3_midside_stereo, L3_intensity_stereo[_band],
 // L3_stereo_top_band/process, L3_reorder/antialias, L3_dct3_9, L3_imdct36,
 // L3_idct3, L3_imdct12/short/gr and L3_change_sign.
-// Only MPEG-1 is enabled. Array offsets replace C pointer arithmetic; scalar
+// Array offsets replace C pointer arithmetic; scalar
 // Float operation order, the compressed 9-value overlap and scaling are kept.
 
 ///|
@@ -22,6 +22,7 @@ fn stereo(
   positions : Array[Int],
   gr : GranuleInfo,
   header : @header.Header,
+  right_compress? : Int = 0,
 ) -> Unit {
   if !header.intensity_stereo() {
     if header.mid_side_stereo() {
@@ -57,7 +58,11 @@ fn stereo(
     let top = bands - blocks + i
     let previous = top - blocks
     positions[top] = if max_band[i] >= previous {
-      3
+      if header.version == @header.Mpeg1 {
+        3
+      } else {
+        0
+      }
     } else {
       positions[previous]
     }
@@ -66,14 +71,30 @@ fn stereo(
   for i = 0; i < bands; i = i + 1 {
     let position = positions[i]
     let count = gr.sfbtab[i]
-    if i > max_band[i % 3] && position >= 0 && position < 7 {
+    if i > max_band[i % 3] &&
+      position >= 0 &&
+      position < (if header.version == @header.Mpeg1 { 7 } else { 64 }) {
       let scale : Float = if header.mid_side_stereo() {
         1.41421356
       } else {
         1.0
       }
-      let kl = g_pan[2 * position] * scale
-      let kr = g_pan[2 * position + 1] * scale
+      let (left_gain, right_gain) : (Float, Float) = if header.version ==
+        @header.Mpeg1 {
+        (g_pan[2 * position], g_pan[2 * position + 1])
+      } else {
+        let attenuation = ldexp_q2(
+          1.0,
+          (position + 1) >> 1 << (right_compress & 1),
+        )
+        if (position & 1) != 0 {
+          (attenuation, 1.0)
+        } else {
+          (1.0, attenuation)
+        }
+      }
+      let kl = left_gain * scale
+      let kr = right_gain * scale
       for j = offset; j < offset + count; j = j + 1 {
         samples[j + 576] = samples[j] * kr
         samples[j] = samples[j] * kl
@@ -247,8 +268,17 @@ fn hybrid(
   base : Int,
   overlap : Array[Float],
   gr : GranuleInfo,
+  sample_rate_hz? : Int = 44100,
 ) -> Unit {
-  let long_bands = if gr.mixed_block_flag != 0 { 2 } else { 0 }
+  let long_bands = if gr.mixed_block_flag != 0 {
+    if sample_rate_hz == 8000 {
+      4
+    } else {
+      2
+    }
+  } else {
+    0
+  }
   if gr.n_short_sfb != 0 {
     reorder(samples, base, gr, long_bands)
   }

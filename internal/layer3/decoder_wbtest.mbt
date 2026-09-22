@@ -170,12 +170,12 @@ test "format changes are fatal until reset" {
 }
 
 ///|
-test "unsupported MPEG2 and free format fail before DSP state changes" {
+test "version-length mismatch and unbounded free format fail before DSP state changes" {
   let first = decoder_stereo_frames[0]
   let decoder = FrameDecoder::new()
   assert_eq(
     try? decoder.decode_frame(decoder_patch(first, 11, 2, 2)),
-    Err(UnsupportedVersion),
+    Err(InvalidFrame("frame length differs from header")),
   )
   assert_eq(decoder.failed, true)
   assert_true(!decoder_nonzero(decoder.qmf))

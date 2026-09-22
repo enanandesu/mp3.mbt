@@ -42,11 +42,12 @@ pub fn FrameDecoder::reset(self : FrameDecoder) -> Unit {
 pub fn FrameDecoder::decode_frame(
   self : FrameDecoder,
   frame : Bytes,
+  free_format_size? : Int,
 ) -> Array[Float] raise DecodeError {
   if self.failed {
     raise InvalidFrame("decoder is failed; reset is required")
   }
-  self.decode_frame_impl(frame) catch {
+  self.decode_frame_impl(frame, free_format_size?) catch {
     error => {
       self.failed = true
       raise error
@@ -58,21 +59,27 @@ pub fn FrameDecoder::decode_frame(
 fn FrameDecoder::decode_frame_impl(
   self : FrameDecoder,
   frame : Bytes,
+  free_format_size? : Int,
 ) -> Array[Float] raise DecodeError {
   let header = match @header.parse(frame) {
     Ok(header) => header
     Err(_) => raise InvalidFrame("invalid or incomplete header")
   }
-  if header.version != @header.Mpeg1 {
-    raise UnsupportedVersion
-  }
   if header.bitrate_kbps is None {
-    raise InvalidFrame("free-format requires bounded frame discovery")
+    match free_format_size {
+      None => raise InvalidFrame("free-format requires bounded frame discovery")
+      Some(size) =>
+        if size <
+          header.main_data_offset() - (if header.padding { 1 } else { 0 }) ||
+          size > 2304 {
+          raise InvalidFrame("invalid bounded free-format frame size")
+        }
+    }
   }
   if self.previous is Some(previous) && !previous.stream_compatible(header) {
     raise InvalidFrame("stream version, sample rate or channel count changed")
   }
-  let side = read_side_info(frame, header)
+  let side = read_side_info(frame, header, free_format_size?)
   let offset = header.main_data_offset()
   let payload = frame[offset:].to_bytes()
   let main_data = self.reservoir.restore(payload, side.main_data_begin)
@@ -80,7 +87,8 @@ fn FrameDecoder::decode_frame_impl(
   let positions : Array[Array[Int]] = [Array::make(39, 0), Array::make(39, 0)]
   let pcm : Array[Float] = []
   let mut consumed = 0
-  for granule = 0; granule < 2; granule = granule + 1 {
+  let granule_count = if header.version == @header.Mpeg1 { 2 } else { 1 }
+  for granule = 0; granule < granule_count; granule = granule + 1 {
     let samples : Array[Float] = Array::make(1152, 0.0)
     for channel = 0; channel < channels; channel = channel + 1 {
       let gr = side.granules[granule * channels + channel]
@@ -102,7 +110,13 @@ fn FrameDecoder::decode_frame_impl(
       consumed = end
     }
     if channels == 2 {
-      stereo(samples, positions[1], side.granules[granule * channels], header)
+      stereo(
+        samples,
+        positions[1],
+        side.granules[granule * channels],
+        header,
+        right_compress=side.granules[granule * channels + 1].scalefac_compress,
+      )
     }
     for channel = 0; channel < channels; channel = channel + 1 {
       hybrid(
@@ -110,6 +124,7 @@ fn FrameDecoder::decode_frame_impl(
         channel * 576,
         self.overlap[channel],
         side.granules[granule * channels + channel],
+        sample_rate_hz=header.sample_rate_hz,
       )
     }
     for value in synth_granule(self.qmf, samples, channels) {

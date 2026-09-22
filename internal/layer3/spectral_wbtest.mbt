@@ -154,7 +154,7 @@ test "Huffman rejects truncated big-value signs and granule limits beyond input"
 }
 
 ///|
-test "scalefactors reject missing bits and unsupported versions" {
+test "scalefactors reject missing bits in MPEG1 and MPEG2" {
   let gr = { ..spectral_test_gr(), scalefac_compress: 15 }
   let ist = Array::make(40, 0)
   let header = @header.parse(b"\xff\xfb\x90\x00").unwrap()
@@ -166,9 +166,9 @@ test "scalefactors reject missing bits and unsupported versions" {
   }
   let header2 = @header.parse(b"\xff\xf3\x90\x00").unwrap()
   try decode_scalefactors(header2, ist, BitCursor::new(b""), gr, 0) catch {
-    UnsupportedVersion => ()
+    BitBudget(_, _, _) => ()
     _ => fail("unexpected decode error")
   } noraise {
-    _ => fail("expected MPEG1-only stage boundary")
+    _ => fail("expected bounded MPEG2 scalefactor failure")
   }
 }

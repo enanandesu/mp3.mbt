@@ -31,10 +31,30 @@ pub struct SideInfo {
   granules : Array[GranuleInfo]
 } derive(Eq, Show)
 
-// BEGIN GENERATED MPEG1 SCALEFACTOR BAND WIDTHS
+// BEGIN GENERATED SCALEFACTOR BAND WIDTHS
 
 ///|
 let side_scf_long : Array[Array[Int]] = [
+  [
+    6, 6, 6, 6, 6, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 38, 46, 52, 60, 68, 58,
+    54, 0,
+  ],
+  [
+    12, 12, 12, 12, 12, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 76, 90, 2, 2, 2,
+    2, 2, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 38, 46, 52, 60, 68, 58,
+    54, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 8, 10, 12, 14, 16, 18, 22, 26, 32, 38, 46, 54, 62, 70, 76,
+    36, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 38, 46, 52, 60, 68, 58,
+    54, 0,
+  ],
   [
     4, 4, 4, 4, 4, 4, 6, 6, 8, 8, 10, 12, 16, 20, 24, 28, 34, 42, 50, 54, 76, 158,
     0,
@@ -52,6 +72,26 @@ let side_scf_long : Array[Array[Int]] = [
 ///|
 let side_scf_short : Array[Array[Int]] = [
   [
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14,
+    14, 18, 18, 18, 24, 24, 24, 30, 30, 30, 40, 40, 40, 18, 18, 18, 0,
+  ],
+  [
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 16, 16, 16, 20, 20, 20, 24, 24, 24, 28,
+    28, 28, 36, 36, 36, 2, 2, 2, 2, 2, 2, 2, 2, 2, 26, 26, 26, 0,
+  ],
+  [
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 6, 6, 8, 8, 8, 10, 10, 10, 14, 14, 14,
+    18, 18, 18, 26, 26, 26, 32, 32, 32, 42, 42, 42, 18, 18, 18, 0,
+  ],
+  [
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14,
+    14, 18, 18, 18, 24, 24, 24, 32, 32, 32, 44, 44, 44, 12, 12, 12, 0,
+  ],
+  [
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14,
+    14, 18, 18, 18, 24, 24, 24, 30, 30, 30, 40, 40, 40, 18, 18, 18, 0,
+  ],
+  [
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12,
     14, 14, 14, 18, 18, 18, 22, 22, 22, 30, 30, 30, 56, 56, 56, 0,
   ],
@@ -65,8 +105,31 @@ let side_scf_short : Array[Array[Int]] = [
   ],
 ]
 
+// 8 kHz mixed row is derived from pinned long[:6] + short[9:].
+// This fixes upstream's 48/72 start mismatch and 39/36 band mismatch.
+
 ///|
 let side_scf_mixed : Array[Array[Int]] = [
+  [
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14, 14, 18, 18,
+    18, 24, 24, 24, 30, 30, 30, 40, 40, 40, 18, 18, 18, 0,
+  ],
+  [
+    12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 20, 20, 20, 24, 24, 24, 28, 28,
+    28, 36, 36, 36, 2, 2, 2, 2, 2, 2, 2, 2, 2, 26, 26, 26, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 10, 10, 10, 14, 14, 14, 18, 18,
+    18, 26, 26, 26, 32, 32, 32, 42, 42, 42, 18, 18, 18, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14, 14, 18, 18,
+    18, 24, 24, 24, 32, 32, 32, 44, 44, 44, 12, 12, 12, 0,
+  ],
+  [
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14, 14, 14, 18, 18,
+    18, 24, 24, 24, 30, 30, 30, 40, 40, 40, 18, 18, 18, 0,
+  ],
   [
     4, 4, 4, 4, 4, 4, 6, 6, 4, 4, 4, 6, 6, 6, 8, 8, 8, 10, 10, 10, 12, 12, 12, 14,
     14, 14, 18, 18, 18, 22, 22, 22, 30, 30, 30, 56, 56, 56, 0,
@@ -80,23 +143,22 @@ let side_scf_mixed : Array[Array[Int]] = [
     20, 20, 26, 26, 26, 34, 34, 34, 42, 42, 42, 12, 12, 12, 0,
   ],
 ]
-// END GENERATED MPEG1 SCALEFACTOR BAND WIDTHS
+// END GENERATED SCALEFACTOR BAND WIDTHS
 
 ///|
-/// Read a complete MPEG-1 Layer III frame. The two CRC bytes, when present,
+/// Read a complete MPEG-1/2/2.5 Layer III frame. The two CRC bytes, when present,
 /// are skipped; CRC checksum verification is not implemented here.
 pub fn read_side_info(
   frame : Bytes,
   header : @header.Header,
+  free_format_size? : Int,
 ) -> SideInfo raise DecodeError {
-  if header.version != @header.Mpeg1 {
-    raise UnsupportedVersion
-  }
+  let mpeg1 = header.version == @header.Mpeg1
   match @header.parse(frame) {
     Ok(parsed) if parsed == header => ()
     _ => raise InvalidFrame("frame header differs from parsed header")
   }
-  match header.frame_bytes() {
+  match header.frame_bytes(free_format_size?) {
     Ok(Some(size)) =>
       if frame.length() != size {
         raise InvalidFrame("frame length differs from header")
@@ -110,22 +172,30 @@ pub fn read_side_info(
   }
   let bits = BitCursor::new(frame, limit=data_offset * 8)
   bits.skip((4 + header.crc_bytes()) * 8)
-  let main_data_begin = bits.read(9)
+  let main_data_begin = bits.read(if mpeg1 { 9 } else { 8 })
   let channels = header.channels()
-  bits.skip(if channels == 1 { 5 } else { 3 })
+  bits.skip(if mpeg1 { if channels == 1 { 5 } else { 3 } } else { channels })
   let reuse = Array::make(channels, 0)
-  for ch = 0; ch < channels; ch = ch + 1 {
-    reuse[ch] = bits.read(4)
+  if mpeg1 {
+    for ch = 0; ch < channels; ch = ch + 1 {
+      reuse[ch] = bits.read(4)
+    }
   }
   let rate = match header.sample_rate_hz {
-    44100 => 0
-    48000 => 1
-    32000 => 2
-    _ => raise InvalidSideInfo("unsupported MPEG-1 sample rate")
+    11025 | 12000 => 0
+    8000 => 1
+    22050 => 2
+    24000 => 3
+    16000 => 4
+    44100 => 5
+    48000 => 6
+    32000 => 7
+    _ => raise InvalidSideInfo("unsupported sample rate")
   }
   let granules : Array[GranuleInfo] = []
   let mut total_bits = 0
-  for index = 0; index < channels * 2; index = index + 1 {
+  let granule_count = if mpeg1 { 2 } else { 1 }
+  for index = 0; index < channels * granule_count; index = index + 1 {
     let ch = index % channels
     let part_23_length = bits.read(12)
     total_bits += part_23_length
@@ -134,7 +204,7 @@ pub fn read_side_info(
       raise InvalidSideInfo("big_values exceeds 288")
     }
     let global_gain = bits.read(8)
-    let scalefac_compress = bits.read(4)
+    let scalefac_compress = bits.read(if mpeg1 { 4 } else { 9 })
     let mut sfbtab = side_scf_long[rate]
     let mut n_long_sfb = 22
     let mut n_short_sfb = 0
@@ -160,7 +230,7 @@ pub fn read_side_info(
           n_short_sfb = 39
         } else {
           sfbtab = side_scf_mixed[rate]
-          n_long_sfb = 8
+          n_long_sfb = if mpeg1 { 8 } else { 6 }
           n_short_sfb = 30
         }
       }
@@ -185,7 +255,13 @@ pub fn read_side_info(
         raise InvalidSideInfo("reserved Huffman codebook")
       }
     }
-    let preflag = bits.read(1)
+    let preflag = if mpeg1 {
+      bits.read(1)
+    } else if scalefac_compress >= 500 {
+      1
+    } else {
+      0
+    }
     let scalefac_scale = bits.read(1)
     let count1_table = bits.read(1)
     granules.push({

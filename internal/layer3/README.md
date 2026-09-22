@@ -19,9 +19,17 @@ The scalar Float expression order, fused Huffman/dequantization, stereo-before-
 reorder ordering, compressed IMDCT overlap, synthesis history and raw PCM extent
 are preserved. Generation scripts extract constants from the source only after
 checking its frozen hash; `--check` regenerates and compares all table/fixture
-bytes. Each oracle executes the original C functions with SIMD disabled.
+bytes. Oracles execute scalar C functions with SIMD disabled; the 8 kHz mixed
+block table correction described below is an explicit exception.
 
-The following intentional differences define the bounded MPEG-1 interface:
+The package supports MPEG-1, MPEG-2 and MPEG-2.5 across all nine sample rates.
+MPEG-1 reads two granules per frame and supports scfsi reuse. The low sample
+rate versions read one granule, use all six LSF scalefactor partition groups,
+derive preflag from scalefac_compress, and preserve the intensity-position
+sentinel 255. LSF intensity attenuation uses the right channel's compression
+parity. An 8 kHz mixed block uses four long transform subbands.
+
+The following intentional differences define the bounded frame interface:
 
 - Pointers become checked byte cursors and arrays. Actual reads obey the
   granule's bit budget; speculative Huffman lookahead is explicitly zero-padded.
@@ -34,8 +42,37 @@ The following intentional differences define the bounded MPEG-1 interface:
   explicit errors. Reservoir storage retains at most 511 bytes. A fatal frame
   locks the decoder until reset clears reservoir, overlap and synthesis history.
 - Returned PCM belongs to its caller. Later frames cannot overwrite it.
-  MPEG-2/2.5 and free-format are explicitly unsupported at this interface until
-  their separate compatibility work is complete.
+- Free-format decoding requires an explicit `free_format_size`: the unpadded
+  total frame length, including header and side information. Its maximum is
+  2304 bytes; a padded frame may total 2305 bytes. The padded total must cover
+  the complete header, optional CRC and side information. This core interface
+  validates the supplied extent; it does not discover frame boundaries.
+
+The fixed upstream's 8 kHz mixed table is internally inconsistent: it has 39
+bands although side information declares six long plus thirty short bands.
+Its first six widths total 48 samples, but reorder and mixed IMDCT start after
+four long subbands, at sample 72. Following the original table to its sentinel
+would process 528 short samples and access up to sample 599 of a 576-sample
+channel. Those accesses are not a usable numerical reference.
+
+`generate_side_info_vectors.py` derives this single mixed row from the same
+pinned CC0 tables as `long[1][:6] + short[1][9:]`. Six 12-sample long bands cover
+72 samples; the remaining thirty short bands cover 504, yielding exactly 576
+samples and one terminator. All other extracted rows remain unchanged.
+`low_version_oracle.c` applies this same table correction only for 8 kHz mixed
+cases before calling the original stereo/reorder/IMDCT helpers. These fixtures
+are explicitly labeled as corrected-table C results, not unmodified-decoder
+equivalence. The continuous trace tool excludes the original C's unsafe branch;
+an independently generated 8 kHz mixed stream is compared with FFmpeg by the
+compatibility validator.
+
+`generate_low_version_vectors.py` also extracts LSF partition/modulus tables
+and reproduces 3072 scalefactor cases spanning every compression value, layout
+and intensity branch, 180 side-info cases across nine rates and five block
+layouts, and 360 stereo/hybrid cases including both LSF intensity scale values.
+The fixtures compare bit positions and ordered hashes of every binary32 value
+and intensity position, including signed zero. Existing MPEG-1 differential
+fixtures continue to compare individual values without relaxed tolerances.
 
 `tools/layer3_trace.c` observes real continuous streams at side information,
 main-data bytes, bit positions, scalefactors, dequantization, stereo, IMDCT, PCM

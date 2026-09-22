@@ -168,7 +168,7 @@ test "side-info invalid fields and total main-data budget are explicit errors" {
 }
 
 ///|
-test "complete frame header agreement and unsupported versions" {
+test "complete frame header agreement and version-length mismatch" {
   let frame = side_frame(2)
   let header = @header.parse(frame).unwrap()
   for length in [0, 3, 4, 35, 416] {
@@ -180,5 +180,8 @@ test "complete frame header agreement and unsupported versions" {
     Err(InvalidFrame("frame header differs from parsed header")),
   )
   let mpeg2 = side_patch(frame, 8, 8, 243)
-  assert_eq(try? side_parse(mpeg2), Err(UnsupportedVersion))
+  assert_eq(
+    try? side_parse(mpeg2),
+    Err(InvalidFrame("frame length differs from header")),
+  )
 }

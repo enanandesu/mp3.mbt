@@ -6,7 +6,7 @@ import(
 )
 
 // Values
-pub fn read_side_info(Bytes, @header.Header) -> SideInfo raise DecodeError
+pub fn read_side_info(Bytes, @header.Header, free_format_size? : Int) -> SideInfo raise DecodeError
 
 // Errors
 pub(all) suberror DecodeError {
@@ -27,7 +27,7 @@ pub struct FrameDecoder {
   mut previous : @header.Header?
   mut failed : Bool
 }
-pub fn FrameDecoder::decode_frame(Self, Bytes) -> Array[Float] raise DecodeError
+pub fn FrameDecoder::decode_frame(Self, Bytes, free_format_size? : Int) -> Array[Float] raise DecodeError
 pub fn FrameDecoder::new() -> Self
 pub fn FrameDecoder::reset(Self) -> Unit
 
