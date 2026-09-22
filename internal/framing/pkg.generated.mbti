@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "enanandesu/mp3/internal/framing"
+
+import(
+  "enanandesu/mp3/internal/header"
+)
+
+// Values
+pub fn probe(Bytes, @header.Header, Bool, Int?, max_free_size? : Int) -> Probe
+
+// Errors
+
+// Types and methods
+pub(all) enum FrameError {
+  InvalidLimit(Int)
+  InvalidHeader
+  HeaderMismatch
+  Truncated(Int, Int)
+  InvalidFreeFormatSize(Int)
+  FreeFormatUnconfirmed
+  FreeFormatSearchLimit(Int)
+  AmbiguousFreeFormat
+}
+pub impl Eq for FrameError
+pub impl Show for FrameError
+
+pub(all) enum Probe {
+  NeedMoreInput(Int)
+  Frame(Int, Int?)
+  Invalid(FrameError)
+}
+pub impl Eq for Probe
+pub impl Show for Probe
+
+// Type aliases
+
+// Traits
+
