@@ -66,7 +66,13 @@ fn decode_scalefactors(
     gr.global_gain > 255 ||
     gr.scfsi < 0 ||
     gr.scfsi > 15 {
-    raise InvalidSideInfo("invalid scalefactor fields")
+    raise InvalidSideInfo(
+      if mpeg1 {
+        "invalid MPEG1 scalefactor fields"
+      } else {
+        "invalid scalefactor fields"
+      },
+    )
   }
   let layout = if gr.n_short_sfb == 0 && gr.n_long_sfb == 22 {
     0
@@ -75,7 +81,13 @@ fn decode_scalefactors(
   } else if gr.n_short_sfb == 30 && gr.n_long_sfb == (if mpeg1 { 8 } else { 6 }) {
     1
   } else {
-    raise InvalidSideInfo("invalid scalefactor layout")
+    raise InvalidSideInfo(
+      if mpeg1 {
+        "invalid MPEG1 scalefactor layout"
+      } else {
+        "invalid scalefactor layout"
+      },
+    )
   }
   if gr.subblock_gain.length() != 3 ||
     gr.subblock_gain.iter().any(fn(x) { x < 0 || x > 7 }) {

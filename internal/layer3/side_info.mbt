@@ -190,7 +190,14 @@ pub fn read_side_info(
     44100 => 5
     48000 => 6
     32000 => 7
-    _ => raise InvalidSideInfo("unsupported sample rate")
+    _ =>
+      raise InvalidSideInfo(
+        if mpeg1 {
+          "unsupported MPEG-1 sample rate"
+        } else {
+          "unsupported sample rate"
+        },
+      )
   }
   let granules : Array[GranuleInfo] = []
   let mut total_bits = 0
