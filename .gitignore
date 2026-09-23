@@ -8,4 +8,5 @@ __pycache__/
 
 # Do not commit stage reports or execution-log archives.
 /evidence/
-/docs/stage*.md
+stage[0-9]*.md
+stage[0-9]*.json
