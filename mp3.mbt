@@ -1,6 +1,5 @@
 ///|
-/// Complete interleaved f32 audio at the original sample rate and channel count.
-/// Encoder delay, padding and the Xing frame are retained; no gapless trimming.
+/// Complete interleaved f32 audio. Encoder delay, padding and Xing frames remain.
 pub struct Audio {
   sample_rate : Int
   channels : Int
@@ -9,21 +8,34 @@ pub struct Audio {
 
 ///|
 pub(all) suberror Mp3Error {
-  InvalidHeader(Int)
+  InvalidHeader(Int64)
   InvalidTag
-  TruncatedFrame(Int, Int)
+  TruncatedFrame(Int64, Int)
   UnsupportedVersion
   UnsupportedFreeFormat
   OutputLimit
   NoAudio
-  DecodeFailure(Int, @layer3.DecodeError)
+  DecodeFailure(Int64, @layer3.DecodeError)
+  FramingFailure(Int64, @framing.FrameError)
+  FormatChange(Int64)
+  InvalidLimits
+  InvalidInputOffset(Int)
+  InputFinished
+  FailedDecoder
 } derive(Eq, Show)
 
 ///|
-/// Decode complete MPEG-1 Layer III audio. This initial whole-buffer interface
-/// does not yet provide incremental input or MPEG-2/2.5/free-format support.
-/// Leading scan and output allocations have explicit limits. Corruption after
-/// the first accepted frame is fatal, including missing reservoir history.
+/// Decode all supported Layer III versions using the incremental state machine.
+/// max_output_samples counts interleaved samples and applies only to this helper.
+pub fn decode_all(
+  data : Bytes,
+  limits? : Limits = Limits::default(),
+) -> Audio raise Mp3Error {
+  collect_audio(Decoder::new(limits~), data)
+}
+
+///|
+/// Compatibility entry point restricted to MPEG-1 with coded bitrate.
 pub fn decode_mpeg1(
   data : Bytes,
   max_output_samples? : Int = 64 * 1024 * 1024,
@@ -32,62 +44,46 @@ pub fn decode_mpeg1(
   if max_output_samples < 0 || max_initial_scan < 0 {
     raise OutputLimit
   }
-  let mut offset = 0
-  while true {
-    match @tags.inspect_id3v2(data[offset:], true, 16 * 1024 * 1024) {
-      NotATag => break
-      Tag(tag) => offset += tag.total_bytes
-      _ => raise InvalidTag
-    }
-  }
-  let end = @tags.trim_id3v1(data[:]).audio_end
-  let scan_start = offset
-  let decoder = @layer3.FrameDecoder::new()
+  let limits = { ..Limits::default(), max_output_samples, max_initial_scan }
+  let decoder = Decoder::new(limits~)
+  decoder.mpeg1_only = true
+  collect_audio(decoder, data)
+}
+
+///|
+fn collect_audio(decoder : Decoder, data : Bytes) -> Audio raise Mp3Error {
   let output : Array[Float] = []
-  let mut format : @header.Header? = None
-  while offset < end {
-    let header = match @header.parse(data, offset~) {
-      Ok(header) => header
-      Err(_) => {
-        if format is None && offset - scan_start < max_initial_scan {
-          offset += 1
-          continue
+  let mut sample_rate = 0
+  let mut channels = 0
+  let mut position = 0
+  while true {
+    position += decoder.push(data, offset=position)
+    if position == data.length() {
+      decoder.finish_input()
+    }
+    while true {
+      match decoder.next_frame() {
+        NeedMoreInput => break
+        EndOfInput => {
+          if channels == 0 {
+            raise NoAudio
+          }
+          return { sample_rate, channels, samples: output }
         }
-        raise InvalidHeader(offset)
+        Frame(frame) => {
+          if frame.samples.length() >
+            decoder.limits.max_output_samples - output.length() {
+            raise OutputLimit
+          }
+          sample_rate = frame.sample_rate
+          channels = frame.channels
+          for sample in frame.samples {
+            output.push(sample)
+          }
+        }
       }
     }
-    if header.version != @header.Mpeg1 {
-      raise UnsupportedVersion
-    }
-    let length = match header.frame_bytes() {
-      Ok(Some(length)) => length
-      Ok(None) => raise UnsupportedFreeFormat
-      Err(_) => raise InvalidHeader(offset)
-    }
-    if length > end - offset {
-      raise TruncatedFrame(offset, length)
-    }
-    if header.samples_per_frame() * header.channels() >
-      max_output_samples - output.length() {
-      raise OutputLimit
-    }
-    let frame = data[offset:offset + length].to_bytes()
-    let samples = decoder.decode_frame(frame) catch {
-      error => raise DecodeFailure(offset, error)
-    }
-    for sample in samples {
-      output.push(sample)
-    }
-    format = Some(header)
-    offset += length
-  }
-  match format {
-    Some(header) =>
-      {
-        sample_rate: header.sample_rate_hz,
-        channels: header.channels(),
-        samples: output,
-      }
-    None => raise NoAudio
+  } else {
+    raise NoAudio
   }
 }

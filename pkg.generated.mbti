@@ -2,22 +2,31 @@
 package "enanandesu/mp3"
 
 import(
+  "enanandesu/mp3/internal/framing"
   "enanandesu/mp3/internal/layer3"
 )
 
 // Values
+pub fn decode_all(Bytes, limits? : Limits) -> Audio raise Mp3Error
+
 pub fn decode_mpeg1(Bytes, max_output_samples? : Int, max_initial_scan? : Int) -> Audio raise Mp3Error
 
 // Errors
 pub(all) suberror Mp3Error {
-  InvalidHeader(Int)
+  InvalidHeader(Int64)
   InvalidTag
-  TruncatedFrame(Int, Int)
+  TruncatedFrame(Int64, Int)
   UnsupportedVersion
   UnsupportedFreeFormat
   OutputLimit
   NoAudio
-  DecodeFailure(Int, @layer3.DecodeError)
+  DecodeFailure(Int64, @layer3.DecodeError)
+  FramingFailure(Int64, @framing.FrameError)
+  FormatChange(Int64)
+  InvalidLimits
+  InvalidInputOffset(Int)
+  InputFinished
+  FailedDecoder
 }
 pub impl Eq for Mp3Error
 pub impl Show for Mp3Error
@@ -28,6 +37,40 @@ pub struct Audio {
   channels : Int
   samples : Array[Float]
 }
+
+pub(all) enum DecodeResult {
+  Frame(PcmFrame)
+  NeedMoreInput
+  EndOfInput
+}
+pub impl Show for DecodeResult
+
+type Decoder
+pub fn Decoder::buffered_bytes(Self) -> Int
+pub fn Decoder::finish_input(Self) -> Unit raise Mp3Error
+pub fn Decoder::new(limits? : Limits) -> Self raise Mp3Error
+pub fn Decoder::next_frame(Self) -> DecodeResult raise Mp3Error
+pub fn Decoder::push(Self, Bytes, offset? : Int) -> Int raise Mp3Error
+pub fn Decoder::reset(Self) -> Unit
+
+pub(all) struct Limits {
+  max_buffer_bytes : Int
+  max_tag_bytes : Int
+  max_initial_scan : Int
+  max_free_format_bytes : Int
+  max_output_samples : Int
+}
+pub fn Limits::default() -> Self
+pub impl Eq for Limits
+pub impl Show for Limits
+
+pub struct PcmFrame {
+  sample_rate : Int
+  channels : Int
+  source_offset : Int64
+  samples : Array[Float]
+}
+pub impl Show for PcmFrame
 
 // Type aliases
 
