@@ -1,0 +1,17 @@
+{
+  "upstream_commit": "ea99364f61c14656440e8d77e9c233ccf3124633",
+  "source": "third_party/minimp3/README.md",
+  "vector_names": [
+    "compl.bit",
+    "he_32khz.bit",
+    "he_44khz.bit",
+    "he_48khz.bit",
+    "hecommon.bit",
+    "he_free.bit",
+    "he_mode.bit",
+    "si.bit",
+    "si_block.bit",
+    "si_huff.bit",
+    "sin1k0db.bit"
+  ]
+}

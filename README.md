@@ -39,6 +39,8 @@ import {
 
 公开类型、方法、限额和错误语义见 [API 文档](docs/API.md)。
 
+正确性、鲁棒性和性能的实测结果见 [测试结果](docs/TEST_RESULTS.md)。
+
 ## 整段解码
 
 ```moonbit
