@@ -113,7 +113,7 @@ test "pow43 C oracle preserves Float arithmetic at approximation boundaries" {
 
 ///|
 test "count1 discards incomplete codewords and signs without reading following granules" {
-  let gr = { ..spectral_test_gr(), count1_table: 1 }
+  let gr = { ..spectral_test_gr(), count1_table: 1, }
   // Table 33 code 0000 denotes four ones, requiring four following signs.
   for limit = 0; limit < 8; limit = limit + 1 {
     for suffix in [0x00, 0xff] {
@@ -135,7 +135,7 @@ test "count1 discards incomplete codewords and signs without reading following g
 
 ///|
 test "Huffman rejects truncated big-value signs and granule limits beyond input" {
-  let gr = { ..spectral_test_gr(), big_values: 1, table_select: [1, 1, 1] }
+  let gr = { ..spectral_test_gr(), big_values: 1, table_select: [1, 1, 1], }
   let bits = BitCursor::new(b"\x00", limit=3)
   let output : Array[Float] = Array::make(576, 0.0)
   try huffman(output, bits, gr, [1.0], 3) catch {
@@ -155,7 +155,7 @@ test "Huffman rejects truncated big-value signs and granule limits beyond input"
 
 ///|
 test "scalefactors reject missing bits in MPEG1 and MPEG2" {
-  let gr = { ..spectral_test_gr(), scalefac_compress: 15 }
+  let gr = { ..spectral_test_gr(), scalefac_compress: 15, }
   let ist = Array::make(40, 0)
   let header = @header.parse(b"\xff\xfb\x90\x00").unwrap()
   try decode_scalefactors(header, ist, BitCursor::new(b""), gr, 0) catch {

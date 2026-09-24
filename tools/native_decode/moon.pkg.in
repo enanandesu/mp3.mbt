@@ -1,0 +1,9 @@
+import {
+  "enanandesu/mp3",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "io.c" ],
+)

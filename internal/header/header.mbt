@@ -8,7 +8,7 @@ pub(all) enum Version {
   Mpeg1
   Mpeg2
   Mpeg25
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub(all) enum ChannelMode {
@@ -16,14 +16,14 @@ pub(all) enum ChannelMode {
   JointStereo
   DualChannel
   Mono
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub(all) enum Emphasis {
   NoEmphasis
   FiftyFifteen
   CcitJ17
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub(all) enum HeaderError {
@@ -37,7 +37,7 @@ pub(all) enum HeaderError {
   InvalidSampleRateIndex
   ReservedEmphasis
   InvalidFreeFormatSize(Int)
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// A validated four-byte Layer III header. This does not validate frame payload.
@@ -53,7 +53,7 @@ pub struct Header {
   copyright : Bool
   original : Bool
   emphasis : Emphasis
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// Parse one header at the given offset, without scanning or reading payload.

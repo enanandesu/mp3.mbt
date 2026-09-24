@@ -110,7 +110,7 @@ test "valid reads match pinned minimp3 C helper" {
   for seed in 0..<4 {
     let bytes = Bytes::makei(8, i => (seed * 83 + i * 61).to_byte())
     for offset in 0..<8 {
-      for width in 1..=32 {
+      for width in 1..<=32 {
         let reader = @bitstream.BitReader::new(bytes)
         assert_eq(reader.skip_bits(offset), Ok(()))
         let index = seed * 256 + offset * 32 + width - 1

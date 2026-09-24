@@ -22,7 +22,7 @@ pub(all) suberror Mp3Error {
   InvalidInputOffset(Int)
   InputFinished
   FailedDecoder
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// Decode all supported Layer III versions using the incremental state machine.
@@ -44,7 +44,7 @@ pub fn decode_mpeg1(
   if max_output_samples < 0 || max_initial_scan < 0 {
     raise OutputLimit
   }
-  let limits = { ..Limits::default(), max_output_samples, max_initial_scan }
+  let limits = { ..Limits::default(), max_output_samples, max_initial_scan, }
   let decoder = Decoder::new(limits~)
   decoder.mpeg1_only = true
   collect_audio(decoder, data)
@@ -68,7 +68,7 @@ fn collect_audio(decoder : Decoder, data : Bytes) -> Audio raise Mp3Error {
           if channels == 0 {
             raise NoAudio
           }
-          return { sample_rate, channels, samples: output }
+          return { sample_rate, channels, samples: output, }
         }
         Frame(frame) => {
           if frame.samples.length() >
@@ -83,7 +83,7 @@ fn collect_audio(decoder : Decoder, data : Bytes) -> Audio raise Mp3Error {
         }
       }
     }
-  } else {
+  } nobreak {
     raise NoAudio
   }
 }

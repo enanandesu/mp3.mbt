@@ -1,6 +1,7 @@
 
 # MoonBit generated files
 target/
+_build/
 .mooncakes/
 .moonagent/
 .DS_Store

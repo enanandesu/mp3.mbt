@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3/internal/header"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn parse(Bytes, offset? : Int) -> Result[Header, HeaderError]
 
@@ -12,17 +16,13 @@ pub(all) enum ChannelMode {
   JointStereo
   DualChannel
   Mono
-}
-pub impl Eq for ChannelMode
-pub impl Show for ChannelMode
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) enum Emphasis {
   NoEmphasis
   FiftyFifteen
   CcitJ17
-}
-pub impl Eq for Emphasis
-pub impl Show for Emphasis
+} derive(Eq, Show, @debug.Debug)
 
 pub struct Header {
   version : Version
@@ -36,7 +36,7 @@ pub struct Header {
   copyright : Bool
   original : Bool
   emphasis : Emphasis
-}
+} derive(Eq, Show, @debug.Debug)
 pub fn Header::channels(Self) -> Int
 pub fn Header::crc_bytes(Self) -> Int
 pub fn Header::frame_bytes(Self, free_format_size? : Int) -> Result[Int?, HeaderError]
@@ -47,8 +47,6 @@ pub fn Header::samples_per_frame(Self) -> Int
 pub fn Header::side_info_bytes(Self) -> Int
 pub fn Header::stream_compatible(Self, Self) -> Bool
 pub fn Header::sync_compatible(Self, Self) -> Bool
-pub impl Eq for Header
-pub impl Show for Header
 
 pub(all) enum HeaderError {
   InvalidOffset(Int)
@@ -61,19 +59,14 @@ pub(all) enum HeaderError {
   InvalidSampleRateIndex
   ReservedEmphasis
   InvalidFreeFormatSize(Int)
-}
-pub impl Eq for HeaderError
-pub impl Show for HeaderError
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) enum Version {
   Mpeg1
   Mpeg2
   Mpeg25
-}
-pub impl Eq for Version
-pub impl Show for Version
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

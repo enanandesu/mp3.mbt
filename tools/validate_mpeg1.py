@@ -15,7 +15,7 @@ import subprocess
 import sys
 
 from pcm_compare import compare, read_pcm
-from verify_environment import verify
+from verify_environment import moon_environment, verify
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "target/mpeg1-validation"
@@ -28,6 +28,7 @@ INTENSITY_CASES = ("joint-intensity", "joint-ms-intensity")
 
 def run(args, **kwargs):
     print("+ " + " ".join(map(str, args)), flush=True)
+    kwargs.setdefault("env", moon_environment())
     return subprocess.run(list(map(str, args)), cwd=ROOT, check=True, **kwargs)
 
 
@@ -94,13 +95,13 @@ def snapshot_module(directory="module", output_root=OUT):
     workspace = output_root / directory
     workspace.mkdir(parents=True, exist_ok=True)
     # Use only current production sources. Numeric fixtures are added below.
-    sources = [path for path in [ROOT / "moon.mod.json", ROOT / "moon.pkg.json", *ROOT.glob("*.mbt"),
-               *ROOT.glob("internal/**/*.mbt"), *ROOT.glob("internal/**/moon.pkg.json")]
+    sources = [path for path in [ROOT / "moon.mod", ROOT / "moon.pkg", *ROOT.glob("*.mbt"),
+               *ROOT.glob("internal/**/*.mbt"), *ROOT.glob("internal/**/moon.pkg")]
                if not path.name.endswith(("_test.mbt", "_wbtest.mbt"))]
     current = {path.relative_to(ROOT) for path in sources}
     generated = {Path("integration_wbtest.mbt"), Path("internal/layer3/continuous_trace_wbtest.mbt")}
-    for old in [*workspace.glob("*.mbt"), *workspace.glob("internal/**/*.mbt"),
-                *workspace.glob("internal/**/moon.pkg.json")]:
+    for old in [*workspace.glob("*.mbt"), *workspace.glob("moon.*"),
+                *workspace.glob("internal/**/*.mbt"), *workspace.glob("internal/**/moon.pkg*")]:
         assert old.resolve().is_relative_to(workspace.resolve()), "Temporary source escaped its workspace"
         if old.relative_to(workspace) not in current | generated:
             old.unlink()
@@ -260,12 +261,16 @@ def build_native_adapter(api="decode_mpeg1", output_root=OUT):
     workspace = snapshot_module("native-module", output_root=output_root)
     package = workspace / "validation_driver"
     package.mkdir(parents=True, exist_ok=True)
-    for name in ("main.mbt", "moon.pkg.json", "io.c"):
+    legacy_package = package / "moon.pkg.json"
+    if legacy_package.exists():
+        legacy_package.unlink()
+    for name in ("main.mbt", "moon.pkg", "io.c"):
         source = ROOT / "tools/native_decode" / (name + ".in" if name != "io.c" else name)
         shutil.copyfile(source, package / name)
     main_path = package / "main.mbt"
     main_path.write_text(main_path.read_text(encoding="utf-8").replace("@mp3.decode_all(data)", f"@mp3.{api}(data)"), encoding="utf-8")
-    run(["moon", "build", "-C", workspace, "--target", "native", "--release", "--deny-warn"])
+    run(["moon", "-C", workspace, "build", "--target", "native", "--release",
+         "--target-dir", workspace / "target", "--deny-warn"])
     return workspace / "target/native/release/build/validation_driver/validation_driver.exe"
 
 
@@ -288,7 +293,7 @@ def main():
     workspace = generate_integration_suite(cases, policy)
     for backend in BACKENDS:
         run(["moon", "test", "--target", backend, "--release", "--deny-warn"])
-        run(["moon", "test", "-C", workspace, "--target", backend, "--release", "--deny-warn"])
+        run(["moon", "-C", workspace, "test", "--target", backend, "--release", "--deny-warn"])
     print("All MPEG-1 continuous PCM, strict-boundary, backend and checkpoint checks passed.")
 
 

@@ -10,7 +10,7 @@ pub(all) suberror DecodeError {
   InsufficientHistory(Int, Int)
   UnsupportedVersion
   InvalidFrame(String)
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 priv struct BitCursor {
@@ -21,7 +21,7 @@ priv struct BitCursor {
 
 ///|
 fn BitCursor::new(bytes : Bytes, limit? : Int) -> BitCursor {
-  { bytes, pos: 0, limit: limit.unwrap_or(bytes.length() * 8) }
+  { bytes, pos: 0, limit: limit.unwrap_or(bytes.length() * 8), }
 }
 
 ///|

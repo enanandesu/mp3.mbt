@@ -10,7 +10,7 @@ pub struct Reservoir {
 
 ///|
 pub fn Reservoir::new() -> Reservoir {
-  { history: b"" }
+  { history: b"", }
 }
 
 ///|

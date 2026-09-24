@@ -9,7 +9,7 @@ pub(all) enum BitstreamError {
   InvalidWidth(Int)
   NegativeSkip(Int)
   UnexpectedEnd(requested~ : Int, remaining~ : Int64)
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// A bounded MSB-first reader over immutable bytes.
@@ -24,7 +24,7 @@ struct BitReader {
 ///|
 /// Start at the first (most significant) bit of `bytes`.
 pub fn BitReader::new(bytes : Bytes) -> BitReader {
-  { bytes, bit_position: 0L, bit_limit: bytes.length().to_int64() * 8L }
+  { bytes, bit_position: 0L, bit_limit: bytes.length().to_int64() * 8L, }
 }
 
 ///|

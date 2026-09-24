@@ -12,7 +12,7 @@ pub(all) struct Id3v2 {
   flags : Int
   payload_bytes : Int
   total_bytes : Int
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub(all) enum TagError {
@@ -24,7 +24,7 @@ pub(all) enum TagError {
   TooLarge(Int)
   Truncated(Int, Int)
   InvalidFooter
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// NeedMoreInput carries the minimum total buffer length, not a byte delta.
@@ -35,7 +35,7 @@ pub(all) enum PrefixResult {
   NeedMoreInput(Int)
   Invalid(TagError)
   Tag(Id3v2)
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 fn incomplete(required : Int, available : Int, eof : Bool) -> PrefixResult {
@@ -127,7 +127,7 @@ pub fn inspect_id3v2(
       }
     }
   }
-  Tag({ version, revision, flags, payload_bytes, total_bytes })
+  Tag({ version, revision, flags, payload_bytes, total_bytes, })
 }
 
 ///|
@@ -136,7 +136,7 @@ pub(all) struct TailInfo {
   audio_end : Int
   tag_bytes : Int
   enhanced : Bool
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 /// Inspect a complete EOF buffer for a trailing 128-byte ID3v1 block. Also
@@ -147,13 +147,13 @@ pub(all) struct TailInfo {
 pub fn trim_id3v1(input : BytesView) -> TailInfo {
   let length = input.length()
   if length < 128 {
-    return { audio_end: length, tag_bytes: 0, enhanced: false }
+    return { audio_end: length, tag_bytes: 0, enhanced: false, }
   }
   let start = length - 128
   if input[start] != b'T' ||
     input[start + 1] != b'A' ||
     input[start + 2] != b'G' {
-    return { audio_end: length, tag_bytes: 0, enhanced: false }
+    return { audio_end: length, tag_bytes: 0, enhanced: false, }
   }
   let enhanced_start = start - 227
   if enhanced_start >= 0 &&
@@ -161,8 +161,8 @@ pub fn trim_id3v1(input : BytesView) -> TailInfo {
     input[enhanced_start + 1] == b'A' &&
     input[enhanced_start + 2] == b'G' &&
     input[enhanced_start + 3] == b'+' {
-    { audio_end: enhanced_start, tag_bytes: 355, enhanced: true }
+    { audio_end: enhanced_start, tag_bytes: 355, enhanced: true, }
   } else {
-    { audio_end: start, tag_bytes: 128, enhanced: false }
+    { audio_end: start, tag_bytes: 128, enhanced: false, }
   }
 }

@@ -12,7 +12,7 @@ pub(all) struct Limits {
   max_initial_scan : Int
   max_free_format_bytes : Int
   max_output_samples : Int
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub fn Limits::default() -> Limits {
@@ -32,14 +32,14 @@ pub struct PcmFrame {
   channels : Int
   source_offset : Int64
   samples : Array[Float]
-} derive(Show)
+} derive(Show, Debug)
 
 ///|
 pub(all) enum DecodeResult {
   Frame(PcmFrame)
   NeedMoreInput
   EndOfInput
-} derive(Show)
+} derive(Show, Debug)
 
 ///|
 struct Decoder {
@@ -348,7 +348,7 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
     self.free_size = free_size
     self.consume(length)
     return Frame(result)
-  } else {
+  } nobreak {
     NeedMoreInput
   }
 }

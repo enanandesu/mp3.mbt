@@ -1,9 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3/internal/layer3"
 
-import(
-  "enanandesu/mp3/internal/header"
-)
+import {
+  "enanandesu/mp3/internal/header",
+  "moonbitlang/core/debug",
+}
 
 // Values
 pub fn read_side_info(Bytes, @header.Header, free_format_size? : Int) -> SideInfo raise DecodeError
@@ -15,9 +16,7 @@ pub(all) suberror DecodeError {
   InsufficientHistory(Int, Int)
   UnsupportedVersion
   InvalidFrame(String)
-}
-pub impl Eq for DecodeError
-pub impl Show for DecodeError
+} derive(Eq, Show, @debug.Debug)
 
 // Types and methods
 pub struct FrameDecoder {
@@ -48,9 +47,7 @@ pub struct GranuleInfo {
   scalefac_scale : Int
   count1_table : Int
   scfsi : Int
-}
-pub impl Eq for GranuleInfo
-pub impl Show for GranuleInfo
+} derive(Eq, Show, @debug.Debug)
 
 pub struct Reservoir {
   mut history : Bytes
@@ -63,11 +60,8 @@ pub fn Reservoir::save(Self, Bytes, Int) -> Unit raise DecodeError
 pub struct SideInfo {
   main_data_begin : Int
   granules : Array[GranuleInfo]
-}
-pub impl Eq for SideInfo
-pub impl Show for SideInfo
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

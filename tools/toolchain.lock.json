@@ -11,16 +11,16 @@
   },
   "tools": {
     "moon": {
-      "version": "moon 0.1.20251222 (3f6c70c 2025-12-22)",
-      "executable_sha256": "e734fd5da7a1ebc52ac9059d2beaa120fb4f84bad16503e4361598e71fab6802"
+      "version": "moon 0.1.20260920 (914d7da 2026-09-20)",
+      "executable_sha256": "b08924405369790f8180accd1e0fbafaa328eac0146c5fe2c25f3a44d5b0bcff"
     },
     "moonc": {
-      "version": "v0.6.36+607dbed8f (2025-12-22)",
-      "executable_sha256": "e70e267f544fb272da0eadf6e4b84cedc9cfb3a996b606d6c37c6ea3c64ec16f"
+      "version": "v0.10.14+7d59c7ec9 (2026-09-18)",
+      "executable_sha256": "6b3a1dcc9ff45face804e0aab361277baeb463f841aa99be7944c61bd13f2bbb"
     },
     "moonrun": {
-      "version": "moonrun 0.1.20251222 (3f6c70c 2025-12-22)",
-      "executable_sha256": "86dbb3c1f7ba97be6756ccbb6d5e8c3e4aaf9d18c6e6ec7919f3ddf45644d848"
+      "version": "moonrun 0.1.20260920 (914d7da 2026-09-20)",
+      "executable_sha256": "7d9d0c5ca8bba498337334d32132fb8baf06a09a1cd1b785c3d5579f15dad4aa"
     },
     "gcc": {
       "version": "15.2.0",
@@ -29,6 +29,10 @@
     "cc": {
       "version": "15.2.0",
       "executable_sha256": "cc25a3283985a7163ca9a7c92ff10006cfb764864caca52e5e1fe3bdbed413cc"
+    },
+    "ar": {
+      "version": "GNU ar (GNU Binutils) 2.45",
+      "executable_sha256": "6822bebfa6b4c0276c6dc80e71f29a0f06630bf698d1196b45048e206906e568"
     },
     "python": {
       "version": "Python 3.13.9",
@@ -47,11 +51,11 @@
       "executable_sha256": "afdb2836f7b6207d0146789b16dac9c91fd799bfa52b75369511c2625f20495f"
     },
     "moonfmt": {
-      "executable_sha256": "408690b62968bce8ced252fa8d00f7a08bf2f81006ec20d81bbf15a4b70a4996"
+      "executable_sha256": "0e47d157a078b7c3476f4b9dc330e8ec48105c859643f730bf2b9f8577470bdd"
     },
     "moonbitlang/core": {
-      "version": "0.6.36+607dbed8f",
-      "manifest_sha256": "bdd42805dc2d79b90fc94a3d5537721a9b13528f3e9c2b7b7500ca05a4aa2994"
+      "version": "0.10.14+7d59c7ec9",
+      "manifest_sha256": "fcb194269d6db08c89aa91bf2511f601bfe21cd61bcea0f5186bd84e3f1648b6"
     }
   }
 }

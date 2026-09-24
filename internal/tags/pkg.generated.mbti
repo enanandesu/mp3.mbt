@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3/internal/tags"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn inspect_id3v2(BytesView, Bool, Int) -> PrefixResult
 
@@ -15,18 +19,14 @@ pub(all) struct Id3v2 {
   flags : Int
   payload_bytes : Int
   total_bytes : Int
-}
-pub impl Eq for Id3v2
-pub impl Show for Id3v2
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) enum PrefixResult {
   NotATag
   NeedMoreInput(Int)
   Invalid(TagError)
   Tag(Id3v2)
-}
-pub impl Eq for PrefixResult
-pub impl Show for PrefixResult
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) enum TagError {
   InvalidLimit
@@ -37,19 +37,14 @@ pub(all) enum TagError {
   TooLarge(Int)
   Truncated(Int, Int)
   InvalidFooter
-}
-pub impl Eq for TagError
-pub impl Show for TagError
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) struct TailInfo {
   audio_end : Int
   tag_bytes : Int
   enhanced : Bool
-}
-pub impl Eq for TailInfo
-pub impl Show for TailInfo
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

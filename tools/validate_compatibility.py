@@ -463,7 +463,7 @@ def main():
     native_gate(build_native_adapter(api="decode_all",output_root=OUT),cases,applicable,policy)
     for backend in args.backends:
         run(["moon","test","--target",backend,"--release","--deny-warn"])
-        run(["moon","test","-C",workspace,"--target",backend,"--release","--deny-warn"])
+        run(["moon","-C",workspace,"test","--target",backend,"--release","--deny-warn"])
     print("All 24 complete compatible corpus files, reserved-header prefix, nine rates, free-format, 12/24-kHz LSF intensity/mixed and continuous C checkpoints passed. This suite checks 8-kHz mixed structurally; tools/verify_mixed_8000.py separately checks its documented subset against a narrowly patched independent decoder.")
 
 

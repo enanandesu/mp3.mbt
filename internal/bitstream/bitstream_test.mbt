@@ -107,7 +107,7 @@ test "all widths and alignments match bit oracle on varied data" {
   for seed in 0..<32 {
     let bytes = Bytes::makei(9, i => (seed * 83 + i * 61).to_byte())
     for start in 0..<40 {
-      for count in 0..=32 {
+      for count in 0..<=32 {
         let reader = @bitstream.BitReader::new(bytes)
         assert_eq(reader.skip_bits(start), Ok(()))
         assert_eq(
@@ -123,11 +123,11 @@ test "all widths and alignments match bit oracle on varied data" {
 
 ///|
 test "short inputs reject every overrun without losing unread bits" {
-  for length in 0..=4 {
+  for length in 0..<=4 {
     let bytes = Bytes::makei(length, i => (0xA7 + 37 * i).to_byte())
-    for start in 0..=(length * 8) {
+    for start in 0..<=(length * 8) {
       let remaining = length * 8 - start
-      for count in 0..=32 {
+      for count in 0..<=32 {
         let probe = @bitstream.BitReader::new(bytes)
         assert_eq(probe.skip_bits(start), Ok(()))
         if count > remaining {

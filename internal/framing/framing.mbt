@@ -17,14 +17,14 @@ pub(all) enum FrameError {
   FreeFormatUnconfirmed
   FreeFormatSearchLimit(Int)
   AmbiguousFreeFormat
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub(all) enum Probe {
   NeedMoreInput(Int)
   Frame(Int, Int?)
   Invalid(FrameError)
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 fn padding(header : @header.Header) -> Int {

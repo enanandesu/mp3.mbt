@@ -93,7 +93,7 @@ fn stream_audio(data : Bytes, chunks : Array[Int]) -> Audio raise {
       samples.push(sample)
     }
   }
-  { sample_rate: frames[0].sample_rate, channels: frames[0].channels, samples }
+  { sample_rate: frames[0].sample_rate, channels: frames[0].channels, samples, }
 }
 
 ///|
@@ -234,7 +234,7 @@ test "free format discovery and EOF two-frame fallback survive chunking" {
     stream_assert_same(small_pair, [1, 13, 157])
   }
   let maximum_pair = stream_free(0, 2304, [1, 1])
-  let limits = { ..Limits::default(), max_buffer_bytes: 4969 }
+  let limits = { ..Limits::default(), max_buffer_bytes: 4969, }
   let (frames, peak) = stream_collect(maximum_pair, [2304, 1, 2305], limits~)
   assert_eq(frames.length(), 2)
   assert_eq(frames[1].source_offset, 2305L)
@@ -347,7 +347,7 @@ test "three-version nonzero PCM and offsets are invariant to chunk boundaries" {
 
 ///|
 test "bounded push returns exact accepted bytes and applies backpressure" {
-  let limits = { ..Limits::default(), max_buffer_bytes: 4969 }
+  let limits = { ..Limits::default(), max_buffer_bytes: 4969, }
   let decoder = Decoder::new(limits~)
   let frame = entry_frame(1)
   let data = Bytes::makei(frame.length() * 30, fn(i) {
@@ -395,13 +395,13 @@ test "limits and push offset misuse are structured and do not poison decoder" {
   assert_eq(defaults.max_buffer_bytes, 8192)
   for
     limits in [
-      { ..defaults, max_buffer_bytes: 4968 },
-      { ..defaults, max_buffer_bytes: 1048577 },
-      { ..defaults, max_free_format_bytes: 3 },
-      { ..defaults, max_free_format_bytes: 2305 },
-      { ..defaults, max_tag_bytes: -1 },
-      { ..defaults, max_initial_scan: -1 },
-      { ..defaults, max_output_samples: -1 },
+      { ..defaults, max_buffer_bytes: 4968, },
+      { ..defaults, max_buffer_bytes: 1048577, },
+      { ..defaults, max_free_format_bytes: 3, },
+      { ..defaults, max_free_format_bytes: 2305, },
+      { ..defaults, max_tag_bytes: -1, },
+      { ..defaults, max_initial_scan: -1, },
+      { ..defaults, max_output_samples: -1, },
     ] {
     assert_eq(stream_new_error(limits), Some(InvalidLimits))
   }
@@ -542,7 +542,7 @@ test "large ID3 footer and enhanced tail span bounded buffers and tiny chunks" {
   })
   let result = try? stream_collect(corrupt_footer, [1, 4096, 7], limits~)
   assert_true(result is Err(InvalidTag))
-  let smaller = { ..limits, max_tag_bytes: 20019 }
+  let smaller = { ..limits, max_tag_bytes: 20019, }
   assert_true(
     (try? stream_collect(data, [7], limits=smaller)) is Err(InvalidTag),
   )

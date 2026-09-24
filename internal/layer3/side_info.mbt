@@ -23,13 +23,13 @@ pub struct GranuleInfo {
   scalefac_scale : Int
   count1_table : Int
   scfsi : Int
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 ///|
 pub struct SideInfo {
   main_data_begin : Int
   granules : Array[GranuleInfo]
-} derive(Eq, Show)
+} derive(Eq, Show, Debug)
 
 // BEGIN GENERATED SCALEFACTOR BAND WIDTHS
 
@@ -299,5 +299,5 @@ pub fn read_side_info(
   if total_bits.to_int64() > available {
     raise BitBudget(data_offset * 8, total_bits, available.to_int())
   }
-  { main_data_begin, granules }
+  { main_data_begin, granules, }
 }

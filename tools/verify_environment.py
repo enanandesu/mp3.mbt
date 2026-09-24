@@ -6,10 +6,12 @@ Normal validation never rewrites the lock.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import shutil
 import subprocess
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "tools/toolchain.lock.json"
@@ -21,13 +23,24 @@ UPSTREAM = {
     "README.md": "ce8a219c5783d7b991070a7aca4c31f8dfcafc183925bf947b80b835ed36b45d",
 }
 COMMANDS = {"moon": ["version"], "moonc": ["-v"], "moonrun": ["--version"],
-            "gcc": ["-dumpfullversion"], "cc": ["-dumpfullversion"],
+            "gcc": ["-dumpfullversion"], "cc": ["-dumpfullversion"], "ar": ["--version"],
             "python": ["--version"], "node": ["--version"],
             "ffmpeg": ["-version"], "ffprobe": ["-version"]}
 
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def moon_environment():
+    env = os.environ.copy()
+    if platform.system() == "Windows":
+        archiver = shutil.which("ar")
+        if not archiver:
+            raise RuntimeError("Required tool not found: ar")
+        env["MOON_CC"] = str(ROOT / "tools/moon-cc-mingw.cmd")
+        env["MOON_AR"] = archiver
+    return env
 
 
 def current():
@@ -46,8 +59,9 @@ def current():
     if not formatter:
         raise RuntimeError("Required tool not found: moonfmt")
     tools["moonfmt"] = {"executable_sha256": sha(formatter)}
-    core = Path(shutil.which("moon")).resolve().parents[1] / "lib/core/moon.mod.json"
-    tools["moonbitlang/core"] = {"version": json.loads(core.read_text())["version"], "manifest_sha256": sha(core)}
+    core = Path(shutil.which("moon")).resolve().parents[1] / "lib/core/moon.mod"
+    tools["moonbitlang/core"] = {"version": tomllib.loads(core.read_text(encoding="utf-8"))["version"],
+                                 "manifest_sha256": sha(core)}
     return {"system": platform.system(), "machine": platform.machine(),
             "upstream_commit": "ea99364f61c14656440e8d77e9c233ccf3124633",
             "upstream_files": UPSTREAM, "tools": tools}

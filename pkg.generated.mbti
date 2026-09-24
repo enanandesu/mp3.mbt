@@ -1,10 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3"
 
-import(
-  "enanandesu/mp3/internal/framing"
-  "enanandesu/mp3/internal/layer3"
-)
+import {
+  "enanandesu/mp3/internal/framing",
+  "enanandesu/mp3/internal/layer3",
+  "moonbitlang/core/debug",
+}
 
 // Values
 pub fn decode_all(Bytes, limits? : Limits) -> Audio raise Mp3Error
@@ -27,9 +28,7 @@ pub(all) suberror Mp3Error {
   InvalidInputOffset(Int)
   InputFinished
   FailedDecoder
-}
-pub impl Eq for Mp3Error
-pub impl Show for Mp3Error
+} derive(Eq, Show, @debug.Debug)
 
 // Types and methods
 pub struct Audio {
@@ -42,8 +41,7 @@ pub(all) enum DecodeResult {
   Frame(PcmFrame)
   NeedMoreInput
   EndOfInput
-}
-pub impl Show for DecodeResult
+} derive(Show, @debug.Debug)
 
 type Decoder
 pub fn Decoder::buffered_bytes(Self) -> Int
@@ -59,20 +57,16 @@ pub(all) struct Limits {
   max_initial_scan : Int
   max_free_format_bytes : Int
   max_output_samples : Int
-}
+} derive(Eq, Show, @debug.Debug)
 pub fn Limits::default() -> Self
-pub impl Eq for Limits
-pub impl Show for Limits
 
 pub struct PcmFrame {
   sample_rate : Int
   channels : Int
   source_offset : Int64
   samples : Array[Float]
-}
-pub impl Show for PcmFrame
+} derive(Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

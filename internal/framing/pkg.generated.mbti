@@ -1,9 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3/internal/framing"
 
-import(
-  "enanandesu/mp3/internal/header"
-)
+import {
+  "enanandesu/mp3/internal/header",
+  "moonbitlang/core/debug",
+}
 
 // Values
 pub fn probe(Bytes, @header.Header, Bool, Int?, max_free_size? : Int) -> Probe
@@ -20,19 +21,14 @@ pub(all) enum FrameError {
   FreeFormatUnconfirmed
   FreeFormatSearchLimit(Int)
   AmbiguousFreeFormat
-}
-pub impl Eq for FrameError
-pub impl Show for FrameError
+} derive(Eq, Show, @debug.Debug)
 
 pub(all) enum Probe {
   NeedMoreInput(Int)
   Frame(Int, Int?)
   Invalid(FrameError)
-}
-pub impl Eq for Probe
-pub impl Show for Probe
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

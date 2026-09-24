@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "enanandesu/mp3/internal/bitstream"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 
 // Errors
@@ -17,11 +21,8 @@ pub(all) enum BitstreamError {
   InvalidWidth(Int)
   NegativeSkip(Int)
   UnexpectedEnd(requested~ : Int, remaining~ : Int64)
-}
-pub impl Eq for BitstreamError
-pub impl Show for BitstreamError
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 
 // Traits
-

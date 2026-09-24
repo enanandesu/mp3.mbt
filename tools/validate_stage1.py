@@ -8,7 +8,7 @@ import sys
 
 from pcm_compare import compare, read_pcm
 from reference_baseline import baseline, OUT
-from verify_environment import verify
+from verify_environment import moon_environment, verify
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,7 +20,8 @@ def require(condition, message):
 
 def command(args):
     print("+ " + " ".join(args), flush=True)
-    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=180)
+    result = subprocess.run(args, cwd=ROOT, env=moon_environment(),
+                            capture_output=True, text=True, timeout=180)
     output = result.stdout + result.stderr
     require(result.returncode == 0, f"Command failed: {args}\n{output}")
     return {"command": args, "exit_code": result.returncode, "output": output.strip()}

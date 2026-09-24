@@ -15,25 +15,27 @@
 
 ## 引入模块
 
-如果模块已发布到 mooncakes.io，可在使用方项目运行 `moon add enanandesu/mp3`；本地开发可在使用方的 `moon.mod.json` 添加路径依赖：
+如果模块已发布到 mooncakes.io，可在使用方项目运行 `moon add enanandesu/mp3`。本地开发可在两个模块的共同父目录建立 `moon.work`，例如：
 
-```json
-{
-  "deps": {
-    "enanandesu/mp3": { "path": "../mp3.mbt" }
-  }
+```text
+members = ["myapp", "mp3.mbt"]
+```
+
+在使用方的 `moon.mod` 中声明模块依赖，并在使用方包的 `moon.pkg` 中导入根包：
+
+```text
+// myapp/moon.mod
+import {
+  "enanandesu/mp3@0.1.0",
+}
+
+// myapp/moon.pkg
+import {
+  "enanandesu/mp3",
 }
 ```
 
-再在使用方包的 `moon.pkg.json` 中导入根包：
-
-```json
-{
-  "import": ["enanandesu/mp3"]
-}
-```
-
-依赖路径按使用方项目的位置调整。模块导入后默认别名为 `@mp3`。
+`members` 路径按实际目录调整；工作区内会使用本地模块。包导入后默认别名为 `@mp3`。
 
 公开类型、方法、限额和错误语义见 [API 文档](docs/API.md)。
 
@@ -82,7 +84,7 @@ moon fmt --check
 python tools/validate_compatibility.py
 ```
 
-该脚本需要 Python、GCC、FFmpeg/FFprobe 和 Node；固定工具版本见 [`tools/toolchain.lock.json`](tools/toolchain.lock.json)。这些工具只用于开发验证。`moon package --list` 可预览发布归档。
+该脚本需要 Python 3.11+、GCC/MinGW（含 `ar`）、FFmpeg/FFprobe 和 Node；固定工具版本见 [`tools/toolchain.lock.json`](tools/toolchain.lock.json)。Windows 上的验证脚本会通过 [`tools/moon-cc-mingw.cmd`](tools/moon-cc-mingw.cmd) 为当前 MoonBit 运行时编译预定义 `_CRT_RAND_S`。直接运行 native 测试时，需将 `MOON_CC` 指向该脚本，并将 `MOON_AR` 指向 `ar.exe`。`moon package --list` 可预览发布归档。
 
 ## 许可证
 

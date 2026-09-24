@@ -277,7 +277,13 @@ test "offset views keep all indexes local" {
   let bytes = b"noiseID3\x03\x00\x00\x00\x00\x00\x00audio"
   assert_eq(
     inspect_id3v2(bytes[5:], true, 10),
-    Tag({ version: 3, revision: 0, flags: 0, payload_bytes: 0, total_bytes: 10 }),
+    Tag({
+      version: 3,
+      revision: 0,
+      flags: 0,
+      payload_bytes: 0,
+      total_bytes: 10,
+    }),
   )
   assert_eq(trim_id3v1(tail(10, true, true)[7:]), {
     audio_end: 3,
