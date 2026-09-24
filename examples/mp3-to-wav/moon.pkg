@@ -1,0 +1,13 @@
+import {
+  "enanandesu/mp3",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "io.c" ],
+)
