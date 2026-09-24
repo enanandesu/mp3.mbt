@@ -382,8 +382,8 @@ def eight_khz_structural_checks():
     Pinned minimp3 has an out-of-bounds mixed reorder. Pinned FFmpeg explicitly
     reports that its 8-kHz mixed switch point is unimplemented. Its PCM is not
     an expected output. These checks cover bounded API state and fragmentation;
-    independent mathematical transform tests and corrected band invariants are
-    maintained in the production test suite.
+    corrected-table C transform checks and band invariants are maintained in
+    the production test suite.
     """
     lines = []
     for extension,shift,free in ((0,0,False),(2,0,False),(1,0,False),(1,1,False),
@@ -464,7 +464,7 @@ def main():
     for backend in args.backends:
         run(["moon","test","--target",backend,"--release","--deny-warn"])
         run(["moon","test","-C",workspace,"--target",backend,"--release","--deny-warn"])
-    print("All 24 complete compatible corpus files, reserved-header prefix, nine rates, free-format, 12/24-kHz LSF intensity/mixed and continuous C checkpoints passed. Eight-kHz mixed has structural streaming coverage only; neither pinned C nor FFmpeg supplies a defined independent PCM oracle for it.")
+    print("All 24 complete compatible corpus files, reserved-header prefix, nine rates, free-format, 12/24-kHz LSF intensity/mixed and continuous C checkpoints passed. This suite checks 8-kHz mixed structurally; tools/verify_mixed_8000.py separately checks its documented subset against a narrowly patched independent decoder.")
 
 
 if __name__ == "__main__":

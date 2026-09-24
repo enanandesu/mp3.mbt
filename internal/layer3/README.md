@@ -68,6 +68,24 @@ an acceptance reference for this branch. Compatibility tests separately enforce
 the 72-sample boundary, the 576-sample extent, and continuity of mixed-block
 window transitions.
 
+`python tools/verify_mixed_8000.py` adds a bounded independent PCM check using
+the generic float implementation of mpg123 1.33.7. Its official source archive
+is pinned to SHA-256
+`31d0e35a4ca567ec9b5ebda6c3062bb4435d6d3eacd6ef0d95cadd7854dc03ee`.
+The test-only copy changes two operations: 8 kHz mixed antialias covers three
+boundaries and mixed IMDCT covers four long subbands. This is agreement with a
+patched independent implementation, not an unmodified external decoder.
+The 16 numerical cases cover ordinary stereo, MS, and both LSF intensity
+scales at 8/12/24 kHz, plus the four 8 kHz free-format equivalents. Each uses
+nine legal long/start/mixed/stop/pure-short transitions and crosses sample 72.
+All use the existing frozen float thresholds and exact raw PCM extent.
+Combined MS+intensity is deliberately outside this oracle's acceptance scope:
+mpg123's separate mixed intensity path retains an eight-long-band assumption
+for LSF and disagrees even at the 12/24 kHz control rates. That combination
+remains covered by the primary and corrected-table tests described above.
+The LGPL source, build files and generated PCM stay under ignored `target/`;
+no mpg123 code is linked into the MoonBit library and no report is persisted.
+
 `generate_low_version_vectors.py` also extracts LSF partition/modulus tables
 and reproduces 3072 scalefactor cases spanning every compression value, layout
 and intensity branch, 180 side-info cases across nine rates and five block
