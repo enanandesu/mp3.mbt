@@ -91,7 +91,7 @@ def intensity_cases(cases):
     return result
 
 
-def snapshot_module(directory="module", output_root=OUT):
+def snapshot_module(directory="module", output_root=OUT, benchmark=False):
     workspace = output_root / directory
     workspace.mkdir(parents=True, exist_ok=True)
     # Use only current production sources. Numeric fixtures are added below.
@@ -109,12 +109,19 @@ def snapshot_module(directory="module", output_root=OUT):
         target = workspace / path.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
+    if benchmark:
+        package = workspace / "moon.pkg"
+        package.write_text(
+            package.read_text(encoding="utf-8")
+            + '\nimport {\n  "moonbitlang/core/bench",\n} for "wbtest"\n',
+            encoding="utf-8",
+        )
     return workspace
 
 
 def generate_integration_suite(cases, policy):
     cases = intensity_cases(cases)
-    workspace = snapshot_module()
+    workspace = snapshot_module(benchmark=True)
     lines = ['// Generated transient corpus checks; no local paths or execution logs.',
              '///|', 'fn integration_bytes(chunks : Array[Bytes]) -> Bytes {',
              '  let bytes : Array[Byte] = []',

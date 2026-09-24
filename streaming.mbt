@@ -289,7 +289,11 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
     if self.format is Some(previous) && !previous.stream_compatible(header) {
       raise FormatChange(self.source_offset)
     }
-    let bytes = self.snapshot(self.count)
+    let probe_length = match header.frame_bytes() {
+      Ok(Some(length)) => Int::min(self.count, length)
+      _ => self.count
+    }
+    let bytes = self.snapshot(probe_length)
     let mut probed = @framing.probe(
       bytes,
       header,
@@ -334,7 +338,11 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
       }
       Frame(length, free_size) => (length, free_size)
     }
-    let frame = bytes[:length].to_bytes()
+    let frame = if bytes.length() == length {
+      bytes
+    } else {
+      bytes[:length].to_bytes()
+    }
     let samples = self.core.decode_frame(frame, free_format_size?=free_size) catch {
       error => raise DecodeFailure(self.source_offset, error)
     }
