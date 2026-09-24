@@ -20,7 +20,7 @@ fn main {
   let size = input_length()
   let data = Bytes::from_array(Array::makei(size, i => input_byte(i).to_byte()))
   try {
-    let audio = @mp3.decode_mpeg1(data)
+    let audio = @mp3.decode_all(data)
     for value in audio.samples {
       output_sample(value)
     }

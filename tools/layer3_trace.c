@@ -159,22 +159,30 @@ int main(int argc, char **argv)
         const uint8_t *frame = audio + offset;
         mp3dec_scratch_t scratch;
         bs_t frame_bits;
-        int channels, main_begin, igr, samples;
+        int channels, main_begin, igr, samples, granules;
         mp3dec_frame_info_t info;
         float pcm[MINIMP3_MAX_SAMPLES_PER_FRAME] = {0};
         float baseline[MINIMP3_MAX_SAMPLES_PER_FRAME] = {0};
         if (!hdr_valid(frame)) fail("non-frame data in contiguous trace");
-        if (!HDR_TEST_MPEG1(frame) || HDR_GET_LAYER(frame) != 1) fail("trace requires MPEG1 Layer III");
+        if (HDR_GET_LAYER(frame) != 1) fail("trace requires Layer III");
         if (frames && !hdr_compare(observed.header, frame)) fail("stream format changed");
         frame_size = hdr_frame_bytes(frame, free_format) + hdr_padding(frame);
         if (frame_size <= HDR_SIZE || (size_t)frame_size > audio_size - offset) fail("truncated frame");
         channels = HDR_IS_MONO(frame) ? 1 : 2;
+        granules = HDR_TEST_MPEG1(frame) ? 2 : 1;
         memcpy(observed.header, frame, HDR_SIZE);
         memset(&scratch, 0, sizeof(scratch));
         bs_init(&frame_bits, frame + HDR_SIZE, frame_size - HDR_SIZE);
         if (HDR_IS_CRC(frame)) get_bits(&frame_bits, 16);
         main_begin = L3_read_side_info(&frame_bits, scratch.gr_info, frame);
         if (main_begin < 0 || frame_bits.pos > frame_bits.limit) fail("invalid side information");
+        /* The pinned upstream 8-kHz mixed-block band widths make reorder
+         * reach beyond 576 coefficients. Do not serialize an undefined oracle
+         * result even if a parallel C invocation happens to repeat it. */
+        if (hdr_sample_rate_hz(frame) == 8000)
+            for (igr = 0; igr < granules * channels; igr++)
+                if (scratch.gr_info[igr].mixed_block_flag)
+                    fail("pinned C oracle has no defined 8-kHz mixed-block reorder");
         if (!L3_restore_reservoir(&observed, &frame_bits, &scratch, main_begin))
             fail("insufficient initial reservoir history");
         trace->used = 0;
@@ -183,7 +191,7 @@ int main(int argc, char **argv)
         u32(trace, hdr_sample_rate_hz(frame)); u32(trace, main_begin);
         u32(trace, scratch.bs.limit / 8);
         bytes(trace, scratch.maindata, (size_t)scratch.bs.limit / 8);
-        for (igr = 0; igr < 2; igr++)
+        for (igr = 0; igr < granules; igr++)
             trace_granule(trace, &observed, &scratch, scratch.gr_info + igr * channels,
                           channels, pcm + igr * 576 * channels);
         L3_save_reservoir(&observed, &scratch);
@@ -191,7 +199,7 @@ int main(int argc, char **argv)
         bytes(trace, observed.reserv_buf, (size_t)observed.reserv);
         memset(&info, 0, sizeof(info));
         samples = mp3dec_decode_frame(&original, frame, (int)(audio_size - offset), baseline, &info);
-        if (samples != 1152 || info.frame_offset || info.frame_bytes != frame_size ||
+        if (samples != granules * 576 || info.frame_offset || info.frame_bytes != frame_size ||
             info.channels != channels || info.hz != (int)hdr_sample_rate_hz(frame))
             fail("original decoder frame scheduling differs");
         if (memcmp(pcm, baseline, (size_t)samples * channels * sizeof(float)))

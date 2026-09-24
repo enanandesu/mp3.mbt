@@ -62,14 +62,19 @@ fn check_continuous_trace(data : Bytes, expected : Bytes, expected_frames : Int)
     let header = @header.parse(frame).unwrap()
     assert_eq(header.channels(), channels)
     assert_eq(header.sample_rate_hz, hz)
-    let side = read_side_info(frame, header)
+    let free_base = size - (if header.padding { 1 } else { 0 })
+    let side = if header.bitrate_kbps is None {
+      read_side_info(frame, header, free_format_size=free_base)
+    } else {
+      read_side_info(frame, header)
+    }
     assert_eq(side.main_data_begin, main_begin)
     let main = reservoir.restore(frame[header.main_data_offset():].to_bytes(), main_begin)
     assert_eq(main, trace.bytes(main_length))
     let positions : Array[Array[Int]] = [Array::make(39, 0), Array::make(39, 0)]
     let frame_pcm : Array[Float] = []
     let mut consumed = 0
-    for granule = 0; granule < 2; granule = granule + 1 {
+    for granule = 0; granule < header.samples_per_frame() / 576; granule = granule + 1 {
       let label = "frame \{frames} granule \{granule}"
       let samples : Array[Float] = Array::make(1152, 0.0)
       for channel = 0; channel < channels; channel = channel + 1 {
@@ -100,10 +105,14 @@ fn check_continuous_trace(data : Bytes, expected : Bytes, expected_frames : Int)
         for i = 0; i < 576; i = i + 1 { samples[channel * 576 + i] = spectrum[i] }
         consumed = end
       }
-      if channels == 2 { stereo(samples, positions[1], side.granules[granule * channels], header) }
+      if channels == 2 {
+        stereo(samples, positions[1], side.granules[granule * channels], header,
+          right_compress=side.granules[granule * channels + 1].scalefac_compress)
+      }
       trace.floats(samples, "\{label} stereo")
       for channel = 0; channel < channels; channel = channel + 1 {
-        hybrid(samples, channel * 576, overlap[channel], side.granules[granule * channels + channel])
+        hybrid(samples, channel * 576, overlap[channel], side.granules[granule * channels + channel],
+          sample_rate_hz=header.sample_rate_hz)
       }
       trace.floats(samples, "\{label} IMDCT")
       let pcm = synth_granule(qmf, samples, channels)
@@ -120,7 +129,12 @@ fn check_continuous_trace(data : Bytes, expected : Bytes, expected_frames : Int)
     // Also exercise the actual production scheduler on the same uninterrupted
     // frame sequence, so a correct manually observed pipeline cannot hide an
     // incorrect FrameDecoder schedule or stale history.
-    assert_eq(complete_decoder.decode_frame(frame), frame_pcm)
+    let actual_pcm = if header.bitrate_kbps is None {
+      complete_decoder.decode_frame(frame, free_format_size=free_base)
+    } else {
+      complete_decoder.decode_frame(frame)
+    }
+    assert_eq(actual_pcm, frame_pcm)
     frames += 1
   }
   assert_eq(frames, expected_frames)

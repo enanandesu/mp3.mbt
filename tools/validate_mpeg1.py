@@ -90,8 +90,8 @@ def intensity_cases(cases):
     return result
 
 
-def snapshot_module(directory="module"):
-    workspace = OUT / directory
+def snapshot_module(directory="module", output_root=OUT):
+    workspace = output_root / directory
     workspace.mkdir(parents=True, exist_ok=True)
     # Use only current production sources. Numeric fixtures are added below.
     sources = [path for path in [ROOT / "moon.mod.json", ROOT / "moon.pkg.json", *ROOT.glob("*.mbt"),
@@ -255,14 +255,18 @@ def to_s16(value):
     return rounded - (rounded < 0)
 
 
-def build_native_adapter():
-    workspace = snapshot_module("native-module")
+def build_native_adapter(api="decode_mpeg1", output_root=OUT):
+    assert api in ("decode_mpeg1", "decode_all")
+    workspace = snapshot_module("native-module", output_root=output_root)
     package = workspace / "validation_driver"
     package.mkdir(parents=True, exist_ok=True)
     for name in ("main.mbt", "moon.pkg.json", "io.c"):
         source = ROOT / "tools/native_decode" / (name + ".in" if name != "io.c" else name)
         shutil.copyfile(source, package / name)
+    main_path = package / "main.mbt"
+    main_path.write_text(main_path.read_text(encoding="utf-8").replace("@mp3.decode_all(data)", f"@mp3.{api}(data)"), encoding="utf-8")
     run(["moon", "build", "-C", workspace, "--target", "native", "--release", "--deny-warn"])
+    return workspace / "target/native/release/build/validation_driver/validation_driver.exe"
 
 
 def main():

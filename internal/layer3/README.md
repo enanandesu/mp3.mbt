@@ -62,9 +62,11 @@ samples and one terminator. All other extracted rows remain unchanged.
 `low_version_oracle.c` applies this same table correction only for 8 kHz mixed
 cases before calling the original stereo/reorder/IMDCT helpers. These fixtures
 are explicitly labeled as corrected-table C results, not unmodified-decoder
-equivalence. The continuous trace tool excludes the original C's unsafe branch;
-an independently generated 8 kHz mixed stream is compared with FFmpeg by the
-compatibility validator.
+equivalence. The continuous trace tool excludes the original C's unsafe branch.
+FFmpeg reports that the 8 kHz switch point is not implemented, so its PCM is not
+an acceptance reference for this branch. Compatibility tests separately enforce
+the 72-sample boundary, the 576-sample extent, and continuity of mixed-block
+window transitions.
 
 `generate_low_version_vectors.py` also extracts LSF partition/modulus tables
 and reproduces 3072 scalefactor cases spanning every compression value, layout
