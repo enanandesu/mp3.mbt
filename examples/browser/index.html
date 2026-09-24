@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mp3.mbt · Browser decoder</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <strong class="brand">mp3<span>.</span>mbt</strong>
+      <span class="topbar-label">Browser decoder</span>
+      <a href="../../README.md" class="docs-link">Documentation</a>
+    </header>
+
+    <main class="workspace">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">LOCAL AUDIO</p>
+          <h1>Listen to an MP3</h1>
+        </div>
+        <span class="privacy-note">Your file stays in this browser</span>
+      </div>
+
+      <section id="drop-zone" class="drop-zone" aria-label="Choose an MP3 file">
+        <div class="drop-icon" aria-hidden="true">♫</div>
+        <div class="drop-copy">
+          <strong>Drop an MP3 here</strong>
+          <span>or choose a file from your device</span>
+        </div>
+        <button id="choose-button" class="choose-button" type="button">Choose MP3</button>
+        <input id="file-input" type="file" accept="audio/mpeg,.mp3,.bit" tabindex="-1" />
+      </section>
+
+      <section class="player" aria-label="Audio player">
+        <div class="track-head">
+          <div class="track-text">
+            <span class="field-label">CURRENT FILE</span>
+            <h2 id="file-name">No file selected</h2>
+            <p id="track-meta">Select an MP3 to begin.</p>
+          </div>
+          <span id="state-badge" class="state-badge" data-state="idle">Idle</span>
+        </div>
+
+        <canvas id="waveform" class="waveform" aria-label="Audio waveform"></canvas>
+
+        <div class="timeline">
+          <span id="current-time">0:00</span>
+          <input id="seek" type="range" min="0" max="1000" value="0" disabled aria-label="Playback position" />
+          <span id="duration">0:00</span>
+        </div>
+
+        <div class="controls">
+          <button id="play" class="play-button" type="button" disabled>Play</button>
+          <button id="restart" class="secondary-button" type="button" disabled>Restart</button>
+          <div class="volume-control">
+            <label for="volume">Volume</label>
+            <input id="volume" type="range" min="0" max="100" value="80" />
+          </div>
+        </div>
+      </section>
+
+      <p id="message" class="message" role="status" aria-live="polite">Ready for a local MP3 file.</p>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

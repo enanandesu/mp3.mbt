@@ -1,0 +1,7 @@
+import {
+  "enanandesu/mp3",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "js"
