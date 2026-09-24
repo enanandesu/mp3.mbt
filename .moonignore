@@ -1,0 +1,14 @@
+# Repository-only validation data and tools are not required by consumers.
+/tests/corpus/*
+!/tests/corpus/manifest.json
+/tools/*
+!/tools/moon-cc-mingw.cmd
+!/tools/toolchain.lock.json
+/AGENTS.md
+
+# .moonignore replaces .gitignore rules when packaging.
+/target/
+/evidence/
+/stage[0-9]*.md
+/stage[0-9]*.json
+__pycache__/

@@ -10,7 +10,7 @@ repository = "https://github.com/enanandesu/mp3.mbt"
 
 keywords = [ "mp3", "audio", "decoder", "mpeg-layer-iii" ]
 
-description = "Pure MoonBit MPEG-1/2/2.5 Layer III decoder with whole-file and streaming PCM APIs."
+description = "Pure MoonBit MPEG-1/2/2.5 Layer III decoder with whole-file and streaming PCM APIs. Supports native, wasm, wasm-gc, and js backends."
 
 // Keep existing Show APIs and validation fixtures while adopting the new toolchain.
 

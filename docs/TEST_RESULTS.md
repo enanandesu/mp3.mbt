@@ -1,6 +1,6 @@
 # 测试结果与验收状态
 
-记录日期：2026-09-24。测试时的源码基线：`e152f91`，并包含测试生成器的 `wbtest` 导入修复。环境：Windows 11 64 位（10.0.26200）、Intel Core i9-14900HX；MoonBit、minimp3、FFmpeg 和 Node 的精确版本与哈希见 [`tools/toolchain.lock.json`](../tools/toolchain.lock.json)。
+原始记录日期：2026-09-24；示例与发布预检复核日期：2026-09-25。环境：Windows 11 64 位（10.0.26200）、Intel Core i9-14900HX；MoonBit、minimp3、FFmpeg 和 Node 的精确版本与哈希见 [`tools/toolchain.lock.json`](../tools/toolchain.lock.json)。
 
 ## 结论速览
 
@@ -67,6 +67,19 @@
 | MPEG-2.5 / 8 kHz | 增量 | 1556.8× → **1628.1×** | 684.9× → **779.0×** |
 
 以上为优化后第二次复测的中位数；优化后首次复测同样全部通过门槛。最慢批次的最低倍数为 native 661.5×、wasm 282.7×。优化针对 [`streaming.mbt`](../streaming.mbt) 中普通码率帧重复复制整个环形缓冲区的路径：现在只复制当前帧需要的字节，并在长度吻合时复用该快照。优化前后 12 个组合的中位倍数约提高 1.05–1.23×；单机微基准有波动，不把这个比例外推到其他设备或音频。wasm 数字来自本机 MoonBit 测试运行时，不代表浏览器。
+
+## 第六阶段示例与发布预检（2026-09-25）
+
+在新增两个示例后，重新运行了完整的 `python tools/validate_compatibility.py`：24 个完整语料的 f32 RMSE 和最大误差均为 0；native、wasm、wasm-gc、js 各通过 **90/90** 仓库测试和 **83/83** 生成兼容性测试。示例未修改解码核心；性能数字仍是上方固定环境的历史复测，不作为浏览器实测。
+
+| 验收项 | 实际结果 |
+| --- | --- |
+| native MP3→WAV | [`tools/test_mp3_to_wav.py`](../tools/test_mp3_to_wav.py) 构建 release 命令，核对 MPEG-1 单声道、MPEG-2 单声道、MPEG-2 双声道的 RIFF 头、采样率、声道、样本数和文件长度；与固定 s16 参考共同范围的 PSNR 分别为 **127.74、114.90、117.05 dB**。已有目标文件保持不变，截断语料返回非零且无残留 WAV。 |
+| 浏览器解码桥接 | [`tools/test_browser_decode.mjs`](../tools/test_browser_decode.mjs) 用 MoonBit `js` release 导出入口解码 MPEG-2 双声道语料，得到 22.05 kHz、444672 个交织采样；非法字节返回 `NoAudio`。 |
+| 浏览器交互 | 在本机 Edge 的 Playwright 无头模式下，[`tools/test_browser_ui.mjs`](../tools/test_browser_ui.mjs) 验证本地文件载入、非空波形画布、播放/暂停、进度跳转、错误状态，以及 1360、390、320 px 宽度无横向溢出；页面无未捕获异常。此项不证明其他浏览器或设备的音频输出质量。 |
+| 本地打包预检 | `moon package --list` 检查通过；`.moonignore` 排除仓库专用的二进制语料和验证脚本，保留库源码、示例、文档、minimp3 许可与源码、工具链锁文件及 Windows 编译脚本。本地归档约 **1.2 MB**；没有执行发布、推送或创建远端仓库。 |
+
+预检不改变上方的正确性与鲁棒性结论：ISO 子集仍为 **7/11** 完整 PCM 通过，FFmpeg 差分矩阵和异常输入执行门槛仍不完整。2026-09-25 的这次本地预检未配置 Git remote。
 
 ## 复现与待补
 

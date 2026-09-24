@@ -1,5 +1,7 @@
 # mp3.mbt API
 
+[English](API.en.md)
+
 模块 `enanandesu/mp3` 将 MPEG-1、MPEG-2 和 MPEG-2.5 Layer III 字节流解码为 PCM。导入方法见 [README](../README.md#引入模块)。库不负责读取文件、播放音频或将 PCM 转换成 WAV。
 
 本页只描述根包的公开接口；准确签名也可查看 [`pkg.generated.mbti`](../pkg.generated.mbti)。
@@ -23,7 +25,7 @@
 | 函数 | 用途 |
 | --- | --- |
 | `decode_all(data: Bytes, limits?: Limits) -> Audio raise Mp3Error` | 解码所有支持的 Layer III 版本，使用增量解码器的同一状态机 |
-| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | 兼容入口；只接受普通码率的 MPEG-1 Layer III，不接受 free-format |
+| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | 旧入口；只接受普通码率的 MPEG-1 Layer III，不接受 free-format；不是规划中的兼容模式 |
 
 `data` 是完整的 MP3 字节内容，文件读取由调用方完成。两者均会累计输出，并在没有音频帧时抛出 `NoAudio`。`decode_all` 可通过 `limits` 调整输入与输出限额；`decode_mpeg1` 使用其余默认限额，两个可选参数默认分别为 `67108864` 和 `65536`。`max_output_samples` 计数单位是**交织采样**，因此一帧 1152 采样的立体声会占用 2304 个名额。
 
