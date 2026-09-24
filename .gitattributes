@@ -6,6 +6,7 @@
 *.md text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf
+LICENSE text eol=lf
 # Preserve the upstream Git blobs, including their original whitespace.
 third_party/minimp3/* -text -whitespace
 *.bit -text
