@@ -1,0 +1,65 @@
+{
+  "system": "Linux",
+  "machine": "x86_64",
+  "upstream_commit": "ea99364f61c14656440e8d77e9c233ccf3124633",
+  "upstream_files": {
+    "minimp3.h": "57e437c5c1f0e8b243885d3929c8973b5e6c778451e0100ab4251d19915cb3ad",
+    "minimp3_ex.h": "8437f3fc1d4d8ab2269a1624f5380a08df1967a048f8887789bae6e25db7db79",
+    "minimp3_test.c": "b9432b7143a988613d983c0dfd046a56ba0d69738b852588f350e8876affb122",
+    "LICENSE": "6a1ee543e5282cd9061881edf462e6fdab181f328da71fc2c9a6950a80e94d01",
+    "README.md": "ce8a219c5783d7b991070a7aca4c31f8dfcafc183925bf947b80b835ed36b45d"
+  },
+  "tools": {
+    "moon": {
+      "version": "moon 0.1.20260920 (914d7da 2026-09-20)",
+      "executable_sha256": "6da4919f45f4abf7c6d7f3cf8d9a457de77dca430d6fb811d21b27ae1ac8e11d"
+    },
+    "moonc": {
+      "version": "v0.10.14+7d59c7ec9 (2026-09-18)",
+      "executable_sha256": "d163b2c4c878ca584870764b75e633d73e8b9c178dcc6b00c692f6b2a6b1b2dc"
+    },
+    "moonrun": {
+      "version": "moonrun 0.1.20260920 (914d7da 2026-09-20)",
+      "executable_sha256": "1b22f489621059b8c22ee4acdaddc5f5d1781f62529d3000a24c03d45032d0e2"
+    },
+    "gcc": {
+      "version": "13.3.0",
+      "executable_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26"
+    },
+    "cc": {
+      "version": "13.3.0",
+      "executable_sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26"
+    },
+    "ar": {
+      "version": "GNU ar (GNU Binutils for Ubuntu) 2.42",
+      "executable_sha256": "6452af2eea333b8c65e1adb92964fc8f97863ab003fa13f9d12bff5345cd7dbe"
+    },
+    "python": {
+      "version": "Python 3.12.3",
+      "executable_sha256": "a92f0f95e883390c7256b2e441484aac06b1002dbe1d924141a77c8d82f96223"
+    },
+    "node": {
+      "version": "v20.17.0",
+      "executable_sha256": "1a6e68f54314f2e90192c155e2ee79cc9beeb2a3db3a8124495c3a1fe5199f5e"
+    },
+    "ffmpeg": {
+      "version": "ffmpeg version 7.0.2-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2000-2024 the FFmpeg developers",
+      "executable_sha256": "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99"
+    },
+    "ffprobe": {
+      "version": "ffprobe version 7.0.2-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2007-2024 the FFmpeg developers",
+      "executable_sha256": "4f231a1960d83e403d08f7971e271707bec278a9ae18e21b8b5b03186668450d"
+    },
+    "time": {
+      "version": "time (GNU Time) UNKNOWN",
+      "executable_sha256": "3b11dec50514a8473e9f6efa7a34d584d0657538c09988f61b72d38ad4991a10"
+    },
+    "moonfmt": {
+      "executable_sha256": "a2fc8f632b61a2d728492c5c43ec90d5e75fc406eb63751fe94e64701010712e"
+    },
+    "moonbitlang/core": {
+      "version": "0.10.14+7d59c7ec9",
+      "manifest_sha256": "fcb194269d6db08c89aa91bf2511f601bfe21cd61bcea0f5186bd84e3f1648b6"
+    }
+  }
+}

@@ -5,6 +5,7 @@
 !/tools/moon-cc-mingw.cmd
 !/tools/toolchain.lock.json
 /AGENTS.md
+/.github/
 
 # .moonignore replaces .gitignore rules when packaging.
 /target/

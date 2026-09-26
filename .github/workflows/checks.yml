@@ -1,0 +1,65 @@
+name: Portable checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Cache verified download archives
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: target/ci-portability/downloads
+          key: linux-x64-tools-${{ hashFiles('tools/setup_ci_linux.py') }}
+      - name: Install pinned MoonBit, core, and Node
+        run: python3 tools/setup_ci_linux.py
+      - name: Check, test, and format all four backends
+        run: |
+          set -euo pipefail
+          moon fmt --check
+          for backend in native wasm wasm-gc js; do
+            moon check --target "$backend" --deny-warn
+            moon test --target "$backend" --release --deny-warn
+          done
+          python3 -m unittest discover -s tools -p 'test_*.py' -v
+          git diff --check
+      - name: Run bounded malformed and chunked regression on all backends
+        run: python3 tools/validate_robustness.py --portable-tools
+      - name: Test native WAV and JavaScript examples
+        run: |
+          python3 tools/test_mp3_to_wav.py
+          node tools/test_browser_decode.mjs
+      - name: Prepare browser test dependencies
+        run: |
+          mkdir -p target/browser-test
+          cp tools/browser-test/package*.json target/browser-test/
+      - name: Install locked Playwright client
+        working-directory: target/browser-test
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test browser interaction
+        env:
+          EDGE_PATH: /usr/bin/google-chrome
+        run: python3 tools/test_browser_ci.py
+      - name: Upload regression and browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-check-diagnostics
+          path: |
+            target/browser-test/*.png
+            target/robustness-validation/results.json
+            target/robustness-validation/*.log
+          if-no-files-found: ignore
+          retention-days: 7

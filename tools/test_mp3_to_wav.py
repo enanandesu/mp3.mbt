@@ -2,7 +2,6 @@
 
 import json
 import math
-import platform
 import struct
 import subprocess
 import tempfile
@@ -21,9 +20,9 @@ def main():
         ["moon", "build", "examples/mp3-to-wav", "--target", "native", "--release", "--deny-warn"],
         cwd=ROOT, env=env, check=True,
     )
-    suffix = ".exe" if platform.system() == "Windows" else ""
-    executable = ROOT / "_build/native/release/build/examples/mp3-to-wav" / f"mp3-to-wav{suffix}"
-    assert executable.is_file(), executable
+    base = ROOT / "_build/native/release/build/examples/mp3-to-wav/mp3-to-wav"
+    executable = next((path for path in (base.with_suffix(".exe"), base) if path.is_file()), None)
+    assert executable is not None, f"Native WAV example was not produced: {base}"
     manifest = {case["id"]: case for case in json.loads(
         (ROOT / "tests/corpus/manifest.json").read_text(encoding="utf-8"))["cases"]}
     policy = json.loads((ROOT / "tests/reference_policy.json").read_text(encoding="utf-8"))

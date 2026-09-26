@@ -32,6 +32,13 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def platform_lock():
+    """Keep the original Windows baseline; other platforms get separate locks."""
+    if platform.system() == "Windows" and platform.machine() == "AMD64":
+        return LOCK
+    return ROOT / "tools" / f"toolchain.{platform.system().lower()}-{platform.machine().lower()}.lock.json"
+
+
 def moon_environment():
     env = os.environ.copy()
     if platform.system() == "Windows":
@@ -43,13 +50,20 @@ def moon_environment():
     return env
 
 
-def current():
+def current(tool_names=None):
     for name, expected in UPSTREAM.items():
         if sha(ROOT / "third_party/minimp3" / name) != expected:
             raise RuntimeError(f"Pinned upstream content changed: {name}")
     tools = {}
-    for name, args in COMMANDS.items():
+    commands = dict(COMMANDS)
+    if platform.system() == "Linux":
+        commands["time"] = ["--version"]
+    if tool_names is not None:
+        commands = {name: args for name, args in commands.items() if name in tool_names}
+    for name, args in commands.items():
         executable = shutil.which(name)
+        if name == "python" and not executable:
+            executable = shutil.which("python3")
         if not executable:
             raise RuntimeError(f"Required tool not found: {name}")
         process = subprocess.run([executable, *args], capture_output=True, text=True, check=True)
@@ -69,19 +83,57 @@ def current():
 
 def verify():
     actual = current()
-    expected = json.loads(LOCK.read_text(encoding="utf-8"))
+    lock = platform_lock()
+    if not lock.is_file():
+        raise RuntimeError(f"No reviewed toolchain baseline for this platform: {lock.name}")
+    expected = json.loads(lock.read_text(encoding="utf-8"))
     if actual != expected:
-        raise RuntimeError("Toolchain differs from tools/toolchain.lock.json; review and recalibrate explicitly")
+        changed = [name for name in sorted(actual["tools"].keys() | expected["tools"].keys())
+                   if actual["tools"].get(name) != expected["tools"].get(name)]
+        detail = ", ".join(changed) or "platform or upstream identity"
+        raise RuntimeError(f"Toolchain differs from tools/{lock.name}: {detail}; "
+                           "review and recalibrate explicitly")
+    return actual
+
+
+def verify_portable_tools():
+    """Verify pure decoder test tools without claiming full reference parity.
+
+    Hosted C/Python system tools are recorded, while MoonBit/core/Node and
+    upstream are strictly checked against the platform lock. PCM reference
+    gates must keep calling verify().
+    """
+    pinned = {"moon", "moonc", "moonrun", "moonfmt", "moonbitlang/core", "node"}
+    observed = {"gcc", "cc", "ar", "python"}
+    actual = current(pinned | observed)
+    lock = platform_lock()
+    if not lock.is_file():
+        raise RuntimeError(f"No reviewed toolchain baseline for this platform: {lock.name}")
+    expected = json.loads(lock.read_text(encoding="utf-8"))
+    for field in ("system", "machine", "upstream_commit", "upstream_files"):
+        if actual[field] != expected[field]:
+            raise RuntimeError(f"Portable toolchain identity mismatch: {field}")
+    for name in sorted(pinned):
+        if actual["tools"].get(name) != expected["tools"].get(name):
+            raise RuntimeError(f"Portable toolchain differs from tools/{lock.name}: {name}")
+    actual["verification_scope"] = "portable-decoder-tools; not a full reference environment"
+    actual["observed_host_tools"] = {name: actual["tools"].pop(name) for name in sorted(observed)}
     return actual
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--record", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--record", action="store_true")
+    mode.add_argument("--portable-tools", action="store_true",
+                      help="Verify MoonBit/core/Node hashes and record host C/Python identities; not the PCM reference environment")
     args = parser.parse_args()
     if args.record:
-        LOCK.write_text(json.dumps(current(), indent=2) + "\n", encoding="utf-8")
-        print(f"Recorded {LOCK}")
+        lock = platform_lock()
+        lock.write_text(json.dumps(current(), indent=2) + "\n", encoding="utf-8")
+        print(f"Recorded {lock}")
+    elif args.portable_tools:
+        print(json.dumps(verify_portable_tools(), indent=2))
     else:
         verify()
         print("Pinned toolchain and all upstream source hashes verified")

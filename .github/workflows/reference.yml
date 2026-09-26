@@ -1,0 +1,73 @@
+name: Pinned reference acceptance
+
+# This is deliberately dispatched only on a provisioned runner: hosted runner
+# Python/C/FFmpeg binaries are not the frozen reference toolchain.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: OS of the runner provisioned to the matching tools/toolchain lock
+        type: choice
+        options: [Windows, Linux]
+        default: Windows
+      browser:
+        description: Run the installed Edge/Chromium UI and browser benchmark
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    runs-on: [self-hosted, '${{ inputs.platform }}', X64, mp3-reference]
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify every pinned tool and upstream hash
+        run: python tools/verify_environment.py
+      - name: Four-backend checks and frozen PCM reference gate
+        run: python tools/validate_compatibility.py
+      - name: Native and JavaScript examples
+        run: |
+          python tools/test_mp3_to_wav.py
+          node tools/test_browser_decode.mjs
+      - name: Native and wasm performance and native peak memory
+        run: |
+          python tools/benchmark_release.py
+          python tools/benchmark_memory.py
+      - name: Prepare browser test dependencies
+        if: inputs.browser
+        run: |
+          mkdir -p target/browser-test
+          cp tools/browser-test/package*.json target/browser-test/
+      - name: Install locked Playwright client
+        if: inputs.browser
+        working-directory: target/browser-test
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Browser UI and measured browser performance
+        if: inputs.browser
+        run: |
+          python tools/test_browser_ci.py
+          node tools/benchmark_browser.mjs
+      - name: Upload reproducible acceptance results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pinned-reference-${{ inputs.platform }}
+          path: |
+            target/reference/baseline.json
+            target/iso-layer3/results.json
+            target/robustness-validation/results.json
+            target/robustness-validation/*.log
+            target/matrix-validation/results.json
+            target/matrix-validation/*.log
+            target/performance-validation/results.json
+            target/performance-memory/results.json
+            target/performance-browser/results.json
+            target/browser-test/*.png
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,9 @@
+{
+  "name": "mp3-mbt-browser-validation",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Development-only browser checks; install under ignored target/browser-test",
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
