@@ -464,6 +464,9 @@ def main():
     for backend in args.backends:
         run(["moon","test","--target",backend,"--release","--deny-warn"])
         run(["moon","-C",workspace,"test","--target",backend,"--release","--deny-warn"])
+    for validator in ("validate_iso_layer3", "validate_robustness", "validate_matrix"):
+        extra = ["--require-all"] if validator == "validate_iso_layer3" else []
+        run([sys.executable, f"tools/{validator}.py", *extra, "--backends", *args.backends])
     print("All 24 complete compatible corpus files, reserved-header prefix, nine rates, free-format, 12/24-kHz LSF intensity/mixed and continuous C checkpoints passed. This suite checks 8-kHz mixed structurally; tools/verify_mixed_8000.py separately checks its documented subset against a narrowly patched independent decoder.")
 
 

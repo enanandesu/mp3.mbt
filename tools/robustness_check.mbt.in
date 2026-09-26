@@ -1,0 +1,104 @@
+// Generated malformed-input checks. Whole and incremental default to strict.
+///|
+fn robustness_bytes(parts : Array[Bytes]) -> Bytes {
+  let bytes : Array[Byte] = []
+  for part in parts { for byte in part { bytes.push(byte) } }
+  Bytes::from_array(bytes)
+}
+
+///|
+fn robustness_stream(data : Bytes, chunks : Array[Int]) -> Audio raise {
+  let decoder = Decoder::new()
+  let samples : Array[Float] = []
+  let mut sample_rate = 0
+  let mut channels = 0
+  let mut position = 0
+  let mut turn = 0
+  let mut finished = false
+  while true {
+    assert_true(turn <= data.length() * 3 + 100, msg="decoder stopped making progress")
+    assert_true(decoder.buffered_bytes() <= Limits::default().max_buffer_bytes)
+    turn += 1
+    match decoder.next_frame() {
+      Frame(frame) => {
+        if channels == 0 {
+          sample_rate = frame.sample_rate
+          channels = frame.channels
+        }
+        assert_eq(frame.sample_rate, sample_rate)
+        assert_eq(frame.channels, channels)
+        for sample in frame.samples {
+          let value = sample.to_double()
+          assert_true(!value.is_nan() && !value.is_inf())
+          samples.push(sample)
+        }
+        assert_true(samples.length() <= Limits::default().max_output_samples)
+      }
+      NeedMoreInput => {
+        assert_true(!finished, msg="decoder needs more input after EOF")
+        if position == data.length() {
+          decoder.finish_input()
+          finished = true
+        } else {
+          let requested = chunks[turn % chunks.length()]
+          let count = if requested < data.length() - position { requested } else { data.length() - position }
+          let accepted = decoder.push(data[position:position + count].to_bytes())
+          assert_true(accepted > 0 && accepted <= count, msg="input backpressure stalled")
+          position += accepted
+        }
+      }
+      EndOfInput => {
+        assert_true(finished)
+        assert_eq(position, data.length())
+        assert_true(decoder.next_frame() is EndOfInput)
+        break
+      }
+    }
+  }
+  if channels == 0 { raise NoAudio }
+  { sample_rate, channels, samples }
+}
+
+///|
+fn robustness_same(data : Bytes, chunks : Array[Int]) -> Unit raise {
+  match (try? decode_all(data), try? robustness_stream(data, chunks)) {
+    (Ok(whole), Ok(fragmented)) => {
+      assert_eq(fragmented.sample_rate, whole.sample_rate)
+      assert_eq(fragmented.channels, whole.channels)
+      assert_eq(fragmented.samples, whole.samples)
+    }
+    (Err(whole), Err(fragmented)) => assert_eq(fragmented.to_string(), whole.to_string())
+    (Ok(_), Err(error)) => fail("fragmented decoding alone failed: \{error}")
+    (Err(error), Ok(_)) => fail("whole decoding alone failed: \{error}")
+  }
+  robustness_compatible_same(data, chunks)
+}
+
+///|
+fn robustness_label(data : Bytes, chunks : Array[Int], label : String) -> Unit raise {
+  try {
+    robustness_same(data, chunks)
+  } catch {
+    error => fail("\{label}: \{error}")
+  }
+}
+
+///|
+fn robustness_fixed(data : Bytes, expected : String) -> Unit raise {
+  match (try? decode_all(data)) {
+    Ok(_) => fail("malformed fixture unexpectedly succeeded")
+    Err(error) => assert_eq(error.to_string(), expected)
+  }
+  for chunks in [[1], [17, 113, 4096], [8192], [7, 1, 65536]] {
+    robustness_same(data, chunks)
+  }
+}
+
+///|
+fn robustness_random(seed : UInt, length : Int) -> Bytes {
+  let mut state = seed
+  Bytes::makei(length, fn(_) {
+    state = state * 1664525U + 1013904223U
+    (state >> 24).to_byte()
+  })
+}

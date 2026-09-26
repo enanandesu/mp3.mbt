@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "description": "Frozen strict default API outcomes for all 16 existing abnormal files. The malformed Xing metadata in vbrtag-oob-read does not invalidate its zero-PCM audio frame; this case must succeed with the declared full output. Error strings include exact offsets and reasons.",
+  "cases": {
+    "l3-nonstandard-small": {
+      "sha256": "81db8ebbbbc69c6c6ad4a6aa92b76e0c08af547da236b9e2c9dbe1d8285a8130",
+      "status": "error",
+      "error": "NoAudio"
+    },
+    "l3-nonstandard-sideinfo-size": {
+      "sha256": "a1988fd67eb5a453c1ddf81d34e4784109e4f065674733a6dc2d90617ad77101",
+      "status": "error",
+      "error": "FramingFailure(33, FreeFormatUnconfirmed)"
+    },
+    "l3-nonstandard-compl-sideinfo-bigvalues": {
+      "sha256": "1cb83da481a4c744cbc5a2c4932929e955f0b72234dd73150dd86b0dd9d9d76f",
+      "status": "error",
+      "error": "DecodeFailure(36480, InvalidSideInfo(big_values exceeds 288))"
+    },
+    "l3-nonstandard-compl-sideinfo-blocktype": {
+      "sha256": "915ae8832581358c78d66d720038dba4edc85a41eea119098eb27ef4ebcc6c72",
+      "status": "error",
+      "error": "DecodeFailure(15552, InvalidSideInfo(switched block_type is zero))"
+    },
+    "l3-nonstandard-compl-sideinfo-size": {
+      "sha256": "f2e981e6dff11bd0af4919340c36703a035be5fbe7988b266d1f3eec04e50788",
+      "status": "error",
+      "error": "FormatChange(4992)"
+    },
+    "l3-nonstandard-vbrtag-corrupted": {
+      "sha256": "7a4ba90fdb30232c1722b04b12169b10331f0e1b4bdbf2a48de8ed74548513cd",
+      "status": "error",
+      "error": "DecodeFailure(0, InvalidSideInfo(big_values exceeds 288))"
+    },
+    "l3-nonstandard-vbrtag-oob-read": {
+      "sha256": "fdb5c22872880061e3d3e56e277e13e58e748a960ccc88f6f134a7db144f25f6",
+      "status": "audio",
+      "sample_rate": 44100,
+      "channels": 2,
+      "sample_count": 2304,
+      "all_zero": true
+    },
+    "l3-nonstandard-he_44_48khz": {
+      "sha256": "f1a554f6de8832cb064c47cd022fd76f826d51839c80c8b3d5d7c55d0db1fbcf",
+      "status": "error",
+      "error": "FormatChange(166661)"
+    },
+    "empty": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "error",
+      "error": "NoAudio"
+    },
+    "random-seed-20260921": {
+      "sha256": "f14e060e1624415dcb82efa2d241af44dacbcfef70fa2c8ca1b0b45fdbcabd61",
+      "status": "error",
+      "error": "NoAudio"
+    },
+    "truncated-header": {
+      "sha256": "b8305114a6470f286472171e1bcd6bb8cfbb41a556b523b4bb44b6c0625e5b49",
+      "status": "error",
+      "error": "NoAudio"
+    },
+    "truncated-tail": {
+      "sha256": "56199946128c3d39638b446cd46328e8ea4292d38eff03b9206fc4218033610f",
+      "status": "error",
+      "error": "TruncatedFrame(2056, 104)"
+    },
+    "id3-truncated": {
+      "sha256": "241ebd09f896ef8d08f6561d84d59569c4bb25ca376dbd9d3ecd9b729586f96d",
+      "status": "error",
+      "error": "InvalidTag"
+    },
+    "id3-bad-synchsafe": {
+      "sha256": "ac8384bae72a0449a7743f35f94fa05036b71a33b344673366102405ec8f4eda",
+      "status": "error",
+      "error": "InvalidTag"
+    },
+    "id3-huge-declaration": {
+      "sha256": "6708cebfe151a679fdf4e4d8953986af3e1c5f0934a8b81afb4bb4eb7cbe8b16",
+      "status": "error",
+      "error": "InvalidTag"
+    },
+    "false-sync": {
+      "sha256": "9fc8629b9ff41e598343647463917860855f38951005586f5e6c6202f2a8e3a8",
+      "status": "error",
+      "error": "NoAudio"
+    }
+  }
+}

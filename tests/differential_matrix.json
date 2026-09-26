@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "description": "Declared coded-bitrate Layer III matrix: every MPEG version/rate, all 14 non-free bitrate indexes, and four channel modes. Synthetic long-block streams have independently coded nonzero channels and no reservoir. These establish syntax coverage, not encoder diversity or coverage of every possible coding tool combination.",
+  "versions": [
+    {"version": "1", "header_version": 3, "rates": [44100, 48000, 32000], "bitrates_kbps": [32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]},
+    {"version": "2", "header_version": 2, "rates": [22050, 24000, 16000], "bitrates_kbps": [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160]},
+    {"version": "2.5", "header_version": 0, "rates": [11025, 12000, 8000], "bitrates_kbps": [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160]}
+  ],
+  "modes": [
+    {"name": "stereo", "header_mode": 0, "extension": 0, "channels": 2},
+    {"name": "joint-ms", "header_mode": 1, "extension": 2, "channels": 2},
+    {"name": "dual-channel", "header_mode": 2, "extension": 0, "channels": 2},
+    {"name": "mono", "header_mode": 3, "extension": 0, "channels": 1}
+  ],
+  "frames_per_syntax_stream": 4,
+  "expected_syntax_rows": 504,
+  "real_encoder": {"name": "FFmpeg/libmp3lame", "rate_controls": ["cbr", "vbr", "abr"], "channels": [1, 2], "expected_rows": 54},
+  "excluded_from_this_matrix": ["free-format (separate compatibility suite)", "all joint intensity/mixed/short combinations (separate compatibility fixtures)", "8 kHz mixed independent PCM (separate documented subset validator)", "CRC validation", "damaged inputs (separate robustness gate)"]
+}
