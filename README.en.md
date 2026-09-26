@@ -77,7 +77,7 @@ python tools/test_mp3_to_wav.py
 node tools/test_browser_decode.mjs
 ```
 
-The cross-backend suite requires Python 3.11+, GCC/MinGW with `ar`, FFmpeg/FFprobe, and Node. Exact pinned versions are recorded in [`tools/toolchain.lock.json`](tools/toolchain.lock.json). To run the optional Edge/Playwright UI smoke test, install `playwright-core` into ignored `target/browser-test`, serve the repository over HTTP, then run `node tools/test_browser_ui.mjs`. Set `EDGE_PATH` to a Chromium executable on other systems.
+The cross-backend suite requires Python 3.11+, GCC/MinGW with `ar`, FFmpeg/FFprobe, and Node. Exact pinned Windows versions are recorded in [`tools/toolchain.lock.json`](tools/toolchain.lock.json); Linux setup and its separate lock are documented in [CI](docs/CI.md). For the optional browser UI smoke test, follow that guide to install the locked Playwright dependency into ignored `target/browser-test`, then run `python tools/test_browser_ci.py`. The helper starts and stops a temporary HTTP server. Windows defaults to Edge; set `EDGE_PATH` to a Chromium executable on other systems.
 
 `moon package --list` previews the local archive; `.moonignore` omits repository-only corpora and validation tools. This packaging check does not upload or publish the module.
 

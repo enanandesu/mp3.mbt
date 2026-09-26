@@ -129,7 +129,7 @@ python tools/test_mp3_to_wav.py
 node tools/test_browser_decode.mjs
 ```
 
-浏览器交互测试可选：先运行上述 HTTP 服务，并执行 `npm install --prefix target/browser-test playwright-core --no-save --no-package-lock --ignore-scripts`，然后运行 `node tools/test_browser_ui.mjs`。默认使用 Windows Edge；其他系统可通过 `EDGE_PATH` 指定 Chromium 可执行文件。以上安装仅进入被忽略的 `target/`，不是库的运行时依赖。
+浏览器交互测试可选：按 [CI 说明](docs/CI.md#浏览器依赖与运行) 将固定的 Playwright 依赖安装到 `target/browser-test/`，然后运行 `python tools/test_browser_ci.py`；脚本自动启停临时 HTTP 服务。默认使用 Windows Edge；其他系统可通过 `EDGE_PATH` 指定 Chromium 可执行文件。以上安装仅进入被忽略的 `target/`，不是库的运行时依赖。Linux 工具链准备和独立锁文件也见 [CI 说明](docs/CI.md)。
 
 ## 严格模式与兼容模式
 
