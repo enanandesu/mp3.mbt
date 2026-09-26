@@ -51,6 +51,11 @@ h1 { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 650; }
 .choose-button:hover { background: #155446; }
 #file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
+.file-limit-setting { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px; color: #5c716b; font-size: 13px; }
+.file-limit-setting input { width: 96px; min-width: 0; padding: 7px 9px; border: 1px solid #b9cbc5; border-radius: 4px; background: #fff; color: #1b282b; font: inherit; }
+#pcm-sample-limit { width: 160px; }
+.file-limit-setting p { flex-basis: 100%; margin: 0; color: #627671; font-size: 12px; line-height: 1.5; }
+
 .player { margin-top: 26px; padding: 25px 28px 23px; border: 1px solid #dde5e3; border-radius: 6px; background: #fff; }
 .track-head { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
 .track-text { min-width: 0; }

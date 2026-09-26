@@ -62,7 +62,14 @@ moon build examples/browser --target js --release
 python -m http.server 9010
 ```
 
-Open [the local demo](http://127.0.0.1:9010/examples/browser/). Select or drop an MP3 to play, pause, seek, adjust volume, and view its waveform. The MoonBit JS build produces PCM; Web Audio only plays that PCM. Files stay in the browser. This minimal demo accepts files up to 16 MiB and at most 10 million interleaved decoded samples. Serve it over HTTP rather than opening `index.html` directly.
+Open [the local demo](http://127.0.0.1:9010/examples/browser/). Select or drop an MP3 to play, pause, seek, adjust volume, and view its waveform. The MoonBit JS build produces PCM; Web Audio only plays that PCM. Files stay in the browser.
+
+Adjust both limits before choosing or dropping the next file:
+
+- **File size limit (MiB)** caps compressed input. It defaults to 16 MiB; the suggested desktop ceiling is 512 MiB and can be raised further, depending on available memory.
+- **Decoded PCM limit (samples)** caps the total interleaved samples across all channels. It defaults to 10 million and accepts integers from 1 to 2147483647. The page passes this value to `decode_mp3(data, max_output_samples)`, which sets `Limits.max_output_samples`. The live estimate shows duration at 44.1 kHz stereo and f32 PCM size: about 1:53 and 38.1 MiB at the default. Raising it permits longer audio. PCM size excludes additional decoding, copying, and playback memory; the integer range is not a browser memory guarantee.
+
+If a file exceeds either limit, adjust the setting and choose or drop it again. Serve the page over HTTP rather than opening `index.html` directly.
 
 ## Validation
 

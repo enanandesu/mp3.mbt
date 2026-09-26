@@ -85,7 +85,7 @@ async function setup(browser, item) {
     bench.decode = () => {
       bench.audio = null;
       bench.error = null;
-      decode_mp3(input);
+      decode_mp3(input, 10000000);
     };
     bench.check = () => {
       if (bench.error) throw new Error(bench.error);

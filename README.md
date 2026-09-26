@@ -43,7 +43,14 @@ moon build examples/browser --target js --release
 python -m http.server 9010
 ```
 
-打开 [本地浏览器示例](http://127.0.0.1:9010/examples/browser/)。选择或拖入本地 MP3 后，MoonBit 的 JS 后端先解码为 PCM，再交给 Web Audio 播放；页面提供播放、暂停、进度、音量和波形。示例不调用浏览器原生 MP3 解码，也不上传文件。单文件上限 16 MiB，解码后上限 1000 万个交织采样；超过限额会显示错误。浏览器页面需要通过 HTTP 服务访问，不能直接打开 `index.html`。
+打开 [本地浏览器示例](http://127.0.0.1:9010/examples/browser/)。选择或拖入本地 MP3 后，MoonBit 的 JS 后端先解码为 PCM，再交给 Web Audio 播放；页面提供播放、暂停、进度、音量和波形。示例不调用浏览器原生 MP3 解码，也不上传文件。
+
+页面可分别调整输入与输出限额，对下一次选择或拖入的文件生效：
+
+- 「File size limit (MiB)」为输入文件上限，默认 16 MiB，桌面浏览器建议上限为 512 MiB，仍可自行调高，实际容量取决于可用内存。
+- 「Decoded PCM limit (samples)」为所有声道合计的交织采样总数，默认 1000 万，可设置 1–2147483647 的整数。页面将数值传给示例桥接函数 `decode_mp3(data, max_output_samples)`，再写入 `Limits.max_output_samples`。旁边实时显示 44.1 kHz 双声道的预计时长及 f32 PCM 大小；默认约 1 分 53 秒、38.1 MiB，调高后可解码更长音频。显示的 PCM 大小不包含解码、复制和播放的额外内存，整数范围不保证浏览器能容纳相应输出。
+
+超过所设限额时页面显示错误；调整后可重新选择或拖入同一文件。浏览器页面需要通过 HTTP 服务访问，不能直接打开 `index.html`。
 
 ## 引入模块
 

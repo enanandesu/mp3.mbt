@@ -6,6 +6,8 @@ const ui = {
   trackMeta: $("track-meta"), badge: $("state-badge"), waveform: $("waveform"),
   seek: $("seek"), currentTime: $("current-time"), duration: $("duration"),
   play: $("play"), restart: $("restart"), volume: $("volume"), message: $("message"),
+  fileSizeLimit: $("file-size-limit"),
+  pcmSampleLimit: $("pcm-sample-limit"), pcmLimitSummary: $("pcm-limit-summary"),
 };
 
 let context;
@@ -22,6 +24,17 @@ let envelope = [];
 function timeLabel(seconds) {
   const total = Math.floor(Math.max(0, seconds));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function validPcmLimit(samples) {
+  return Number.isInteger(samples) && samples >= 1 && samples <= 2147483647;
+}
+
+function updatePcmLimitSummary() {
+  const samples = ui.pcmSampleLimit.valueAsNumber;
+  ui.pcmLimitSummary.textContent = validPcmLimit(samples)
+    ? `About ${timeLabel(samples / (44100 * 2))} at 44.1 kHz stereo · ${(samples * 4 / 1024 / 1024).toFixed(1)} MiB of PCM. Playback uses additional memory.`
+    : "Enter a whole number from 1 to 2,147,483,647 samples.";
 }
 
 function setState(state, message, error = false) {
@@ -175,40 +188,61 @@ globalThis.mp3Demo = {
     ui.restart.disabled = true;
     ui.seek.disabled = true;
     ui.trackMeta.textContent = "No playable audio";
-    setState("Error", message, true);
+    setState("Error", message === "OutputLimit"
+      ? "Decoded audio exceeds your PCM sample limit. Increase the decoded PCM limit and choose or drop the file again."
+      : message, true);
     updateTimeline();
   },
 };
 
 async function loadFile(file) {
   if (!file) return;
+  const limitMiB = ui.fileSizeLimit.valueAsNumber;
+  const limitBytes = limitMiB * 1024 * 1024;
+  if (!ui.fileSizeLimit.checkValidity() || !Number.isSafeInteger(limitBytes)) {
+    ui.fileSizeLimit.setCustomValidity("Enter a positive whole number of MiB.");
+    ui.fileSizeLimit.reportValidity();
+    return;
+  }
+  const maxOutputSamples = ui.pcmSampleLimit.valueAsNumber;
+  if (!ui.pcmSampleLimit.checkValidity() || !validPcmLimit(maxOutputSamples)) {
+    ui.pcmSampleLimit.setCustomValidity("Enter a whole number from 1 to 2,147,483,647 samples.");
+    ui.pcmSampleLimit.reportValidity();
+    return;
+  }
   const id = ++loadingId;
   stopSource();
   buffer = null;
   envelope = [];
   position = 0;
   ui.fileName.textContent = file.name;
-  ui.trackMeta.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+  ui.trackMeta.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MiB`;
   ui.play.disabled = true;
   ui.restart.disabled = true;
   ui.seek.disabled = true;
   ui.play.textContent = "Play";
   setState("Loading", "Reading and decoding file...");
   updateTimeline();
-  if (file.size > 16 * 1024 * 1024) {
-    globalThis.mp3Demo.receiveError("This demo accepts files up to 16 MB.");
+  if (file.size > limitBytes) {
+    globalThis.mp3Demo.receiveError(`This file exceeds your ${limitMiB} MiB limit. Increase the file size limit and choose or drop it again.`);
     return;
   }
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (id !== loadingId) return;
     await new Promise(requestAnimationFrame);
-    decode_mp3(bytes);
+    if (id !== loadingId) return;
+    decode_mp3(bytes, maxOutputSamples);
   } catch (error) {
     if (id === loadingId) globalThis.mp3Demo.receiveError(String(error));
   }
 }
 
+ui.fileSizeLimit.addEventListener("input", () => ui.fileSizeLimit.setCustomValidity(""));
+ui.pcmSampleLimit.addEventListener("input", () => {
+  ui.pcmSampleLimit.setCustomValidity("");
+  updatePcmLimitSummary();
+});
 ui.choose.addEventListener("click", () => ui.fileInput.click());
 ui.fileInput.addEventListener("change", (event) => {
   loadFile(event.target.files[0]);
@@ -255,4 +289,5 @@ ui.waveform.addEventListener("click", (event) => {
   else { position = at; updateTimeline(); }
 });
 new ResizeObserver(() => drawWaveform(currentPosition())).observe(ui.waveform);
+updatePcmLimitSummary();
 updateTimeline();

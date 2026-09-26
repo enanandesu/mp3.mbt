@@ -19,10 +19,30 @@ try {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.screenshot({ path: path.join(root, "target/browser-test/desktop.png") });
   assert.equal(await page.locator("#state-badge").textContent(), "Idle");
+  const pcmLimit = page.locator("#pcm-sample-limit");
+  assert.equal(await pcmLimit.inputValue(), "10000000");
+  assert.match(await page.locator("#pcm-limit-summary").textContent(), /1:53.*38\.1 MiB/);
+  await pcmLimit.fill("172799");
+  await page.locator("#file-input").setInputFiles(
+    path.join(root, "tests/corpus/upstream/l3-he_32khz.bit"),
+  );
+  await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Error");
+  assert.match(await page.locator("#message").textContent(), /PCM sample limit/);
+  assert.equal(await page.locator("#play").isDisabled(), true);
+  for (const invalid of ["", "0", "-1", "1.5", "2147483648"]) {
+    await pcmLimit.fill(invalid);
+    await page.locator("#file-input").setInputFiles(
+      path.join(root, "tests/corpus/upstream/l3-he_32khz.bit"),
+    );
+    assert.equal(await pcmLimit.evaluate((input) => input.validity.valid), false);
+  }
+  await pcmLimit.fill("172800");
   await page.locator("#file-input").setInputFiles(
     path.join(root, "tests/corpus/upstream/l3-he_32khz.bit"),
   );
   await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Ready");
+  assert.equal(await pcmLimit.evaluate((input) => input.validity.valid), true);
+  await pcmLimit.fill("10000000");
   assert.match(await page.locator("#track-meta").textContent(), /32,000 Hz.*Mono.*0:05/);
   const painted = await page.locator("#waveform").evaluate((canvas) => {
     const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
@@ -58,7 +78,7 @@ try {
   await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Error");
   assert.equal(await page.locator("#play").isDisabled(), true);
   assert.deepEqual(errors, []);
-  console.log("Browser UI: load, waveform, play/pause, seek, error, desktop/mobile passed");
+  console.log("Browser UI: adjustable PCM limit, exact sample boundary, invalid-value recovery, load, waveform, play/pause, seek, error, desktop/mobile passed");
 } finally {
   await browser.close();
 }

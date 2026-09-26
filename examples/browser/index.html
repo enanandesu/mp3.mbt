@@ -32,6 +32,19 @@
         <input id="file-input" type="file" accept="audio/mpeg,.mp3,.bit" tabindex="-1" />
       </section>
 
+      <div class="file-limit-setting">
+        <label for="file-size-limit">File size limit (MiB)</label>
+        <input id="file-size-limit" type="number" min="1" step="1" value="16" required aria-describedby="file-limit-help" />
+        <p id="file-limit-help">Suggested ceiling: 512 MiB for desktop browsers. You can adjust it before choosing or dropping the next file. Actual capacity depends on available memory.</p>
+      </div>
+
+      <div class="file-limit-setting">
+        <label for="pcm-sample-limit">Decoded PCM limit (samples)</label>
+        <input id="pcm-sample-limit" type="number" min="1" max="2147483647" step="1" value="10000000" required aria-describedby="pcm-limit-help pcm-limit-summary" />
+        <p id="pcm-limit-help">Total samples across all channels. Applies to the next file you choose or drop.</p>
+        <p id="pcm-limit-summary" aria-live="polite"></p>
+      </div>
+
       <section class="player" aria-label="Audio player">
         <div class="track-head">
           <div class="track-text">
