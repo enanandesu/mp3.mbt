@@ -1,5 +1,6 @@
 """Measure release decoding on fixed corpus bytes and enforce realtime targets."""
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import platform
@@ -16,7 +17,7 @@ BACKENDS = ("native", "wasm")
 TARGETS = {"native": 10.0, "wasm": 1.0}
 PERF = re.compile(
     r"PERF case=(\S+) api=(\S+) audio_seconds=([\d.]+) "
-    r"median_us=([\d.]+) slowest_batch_us=([\d.]+)"
+    r"median_us=([\d.]+) slowest_batch_us=([\d.]+) batch_us=\[([^\]]+)\]"
 )
 
 
@@ -101,9 +102,10 @@ def generate_suite(cases, policy):
                 "    times.push(@bench.monotonic_clock_end(start) / 5.0)",
                 "  }",
                 "  assert_true(!sink.is_nan() && !sink.is_inf())",
+                "  let batches = times.copy()",
                 "  times.sort()",
                 (f'  println("PERF case={name} api={api} audio_seconds={duration:.9f} '
-                 'median_us=\\{times[3]} slowest_batch_us=\\{times[6]}")'),
+                 'median_us=\\{times[3]} slowest_batch_us=\\{times[6]} batch_us=\\{batches}")'),
                 "}",
             ]
     (workspace / "performance_wbtest.mbt").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -127,15 +129,20 @@ def main():
         run = subprocess.run(command, cwd=ROOT, env=moon_environment(),
                              capture_output=True, text=True, timeout=180)
         output = run.stdout + run.stderr
+        (OUT / f"{backend}.log").write_text(output, encoding="utf-8")
         if run.returncode:
             raise RuntimeError(f"{backend} benchmark failed:\n{output}")
         rows = PERF.findall(output)
         if len(rows) != len(CASES) * 2:
             raise RuntimeError(f"Expected six {backend} timing rows:\n{output}")
-        for name, api, duration, median, slowest in rows:
+        for name, api, duration, median, slowest, batch_values in rows:
             duration, median, slowest = float(duration), float(median), float(slowest)
+            batches = [float(value.strip()) for value in batch_values.split(",")]
+            if len(batches) != 7 or sorted(batches)[3] != median or max(batches) != slowest:
+                raise RuntimeError(f"Invalid benchmark batch statistics: {name} {api}")
             row = {"backend": backend, "case": name, "api": api,
-                   "audio_seconds": duration, "median_us": median,
+                   "input_sha256": cases[name]["sha256"],
+                   "audio_seconds": duration, "batch_us": batches, "median_us": median,
                    "slowest_batch_us": slowest,
                    "median_realtime": duration * 1_000_000 / median,
                    "slowest_batch_realtime": duration * 1_000_000 / slowest,
@@ -145,8 +152,19 @@ def main():
             print(f"{backend} {name} {api}: median {row['median_realtime']:.1f}x, "
                   f"slowest batch {row['slowest_batch_realtime']:.1f}x "
                   f"(target {row['target_realtime']:.0f}x)", flush=True)
-    report = {"system": platform.platform(), "machine": platform.processor(),
+    sources = sorted([*workspace.glob("*.mbt"), *(workspace / "internal").rglob("*.mbt")])
+    source_hash = hashlib.sha256()
+    production_hash = hashlib.sha256()
+    for source in sources:
+        entry = source.relative_to(workspace).as_posix().encode() + b"\0" + source.read_bytes()
+        source_hash.update(entry)
+        if not source.name.endswith(("_test.mbt", "_wbtest.mbt")):
+            production_hash.update(entry)
+    report = {"date_utc": datetime.now(timezone.utc).isoformat(),
+              "system": platform.platform(), "machine": platform.processor(),
               "toolchain": environment["tools"]["moon"]["version"],
+              "environment": environment, "benchmark_source_sha256": source_hash.hexdigest(),
+              "production_source_sha256": production_hash.hexdigest(),
               "method": "release; 3 warmups; 7 sequential batches of 5; no file I/O",
               "results": results, "all_passed": all(row["passed"] for row in results)}
     (OUT / "results.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
