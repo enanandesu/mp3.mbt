@@ -8,6 +8,8 @@
 
 [English](README.en.md)
 
+首次使用可按[实际用例：把录音转成 WAV 并在浏览器试听](docs/USAGE.md)试跑。仓库附带约 3 秒的原创合成提示音，浏览器点击 **Load demo audio → Play** 即可体验。
+
 ## 支持范围
 
 - MPEG-1、MPEG-2、MPEG-2.5 Layer III 的九种采样率，单声道与双声道。
@@ -21,17 +23,17 @@
 
 ### MP3→WAV 命令
 
-从仓库根目录运行；输出为原采样率、原声道数的 16 位小端 PCM WAV：
-
-```sh
-moon run examples/mp3-to-wav --target native --release -- input.mp3 output.wav
-```
-
-Windows 上使用本仓库锁定的 MinGW 工具链时，先在 PowerShell 设置：
+从仓库根目录运行。Windows 上使用本仓库锁定的 MinGW 工具链时，先在 PowerShell 设置：
 
 ```powershell
 $env:MOON_CC = (Resolve-Path tools/moon-cc-mingw.cmd).Path
 $env:MOON_AR = (Get-Command ar).Source
+```
+
+转换后输出为原采样率、原声道数的 16 位小端 PCM WAV：
+
+```sh
+moon run examples/mp3-to-wav --target native --release -- input.mp3 output.wav
 ```
 
 原因见下方“开发与验证”。命令不会覆盖已有输出文件。若解码或写入失败，会返回非零状态并删除本次生成的未完成 WAV。WAV 使用普通 RIFF 格式，单文件最大约 4 GiB；PCM 不做 gapless 首尾裁剪。
@@ -43,11 +45,11 @@ moon build examples/browser --target js --release
 python -m http.server 9010
 ```
 
-打开 [本地浏览器示例](http://127.0.0.1:9010/examples/browser/)。选择或拖入本地 MP3 后，MoonBit 的 JS 后端先解码为 PCM，再交给 Web Audio 播放；页面提供播放、暂停、进度、音量和波形。示例不调用浏览器原生 MP3 解码，也不上传文件。
+打开 [本地浏览器示例](http://127.0.0.1:9010/examples/browser/)，点击 **Load demo audio** 载入内置提示音，或选择、拖入自己的 MP3，再点击 **Play**。MoonBit 的 JS 后端先解码为 PCM，再交给 Web Audio 播放；页面提供播放、暂停、进度、音量和波形。示例不调用浏览器原生 MP3 解码，也不上传文件。
 
-页面可分别调整输入与输出限额，对下一次选择或拖入的文件生效：
+页面可分别调整输入与输出限额，对下一次加载的音频生效：
 
-- 「File size limit (MiB)」为输入文件上限，默认 16 MiB，桌面浏览器建议上限为 512 MiB，仍可自行调高，实际容量取决于可用内存。
+- 「File size limit (MiB)」为输入文件上限，默认 16 MiB，桌面浏览器建议上限为 512 MiB，仍可自行调高，实际容量取决于可用内存。[容量测试](docs/TEST_RESULTS.md#示例与辅助检查)使用多个大标签加短音频，不代表能容纳 512 MiB 的长音频；长音频还受下面的 PCM 限额约束。
 - 「Decoded PCM limit (samples)」为所有声道合计的交织采样总数，默认 1000 万，可设置 1–2147483647 的整数。页面将数值传给示例桥接函数 `decode_mp3(data, max_output_samples)`，再写入 `Limits.max_output_samples`。旁边实时显示 44.1 kHz 双声道的预计时长及 f32 PCM 大小；默认约 1 分 53 秒、38.1 MiB，调高后可解码更长音频。显示的 PCM 大小不包含解码、复制和播放的额外内存，整数范围不保证浏览器能容纳相应输出。
 
 超过所设限额时页面显示错误；调整后可重新选择或拖入同一文件。浏览器页面需要通过 HTTP 服务访问，不能直接打开 `index.html`。
@@ -127,7 +129,7 @@ moon fmt --check
 python tools/validate_compatibility.py
 ```
 
-该脚本需要 Python 3.11+、GCC/MinGW（含 `ar`）、FFmpeg/FFprobe 和 Node；固定工具版本见 [`tools/toolchain.lock.json`](tools/toolchain.lock.json)。Windows 上的验证脚本会通过 [`tools/moon-cc-mingw.cmd`](tools/moon-cc-mingw.cmd) 为当前 MoonBit 运行时编译预定义 `_CRT_RAND_S`。直接运行 native 测试时，需将 `MOON_CC` 指向该脚本，并将 `MOON_AR` 指向 `ar.exe`。`moon package --list` 可预览本地归档，`.moonignore` 会排除仅供仓库验证的语料和工具。
+该脚本需要 Python 3.11+、GCC/MinGW（含 `ar`）、FFmpeg/FFprobe 和 Node；Windows 固定工具版本见 [`tools/toolchain.lock.json`](tools/toolchain.lock.json)，Linux 独立锁见 [CI 文档](docs/CI.md)。Windows 上的验证脚本会通过 [`tools/moon-cc-mingw.cmd`](tools/moon-cc-mingw.cmd) 为当前 MoonBit 运行时编译预定义 `_CRT_RAND_S`。直接运行 native 测试时，需将 `MOON_CC` 指向该脚本，并将 `MOON_AR` 指向 `ar.exe`。`moon package --list` 可预览本地归档，`.moonignore` 会排除仅供仓库验证的语料和工具。
 
 两个示例的独立验收命令：
 
@@ -161,10 +163,12 @@ let recoveries = stream.recoveries
 
 ## 维护与后续方向
 
-每次修改运行四后端回归、异常语料、差分矩阵与兼容模式验收。自动化配置及平台工具链说明见 [CI](docs/CI.md)，浏览器与其他操作系统的实测方法见 [性能测量](docs/PERFORMANCE.md)。验证脚本将生成语料、失败复现输入和机器可读报告保存在被忽略的 `target/`。
+日常修改运行上面的 check/test/fmt；修改解码行为时，再运行四后端回归、异常语料、差分矩阵与兼容模式验收。自动化配置及平台工具链说明见 [CI](docs/CI.md)，浏览器与其他操作系统的实测方法见 [性能测量](docs/PERFORMANCE.md)。验证脚本将生成语料、失败复现输入和机器可读报告保存在被忽略的 `target/`。
 
-可按实际需求继续评估 gapless 裁剪、CRC 校验、seek/索引、更完整的 ID3 读取及异步输入适配。MP3 编码、Layer I/II、SIMD 和定点实现属于独立范围。发布前复核支持边界、许可证、打包清单和使用方导入验证。
+可按实际需求继续评估 gapless 裁剪、CRC 校验、seek/索引、更完整的 ID3 读取及异步输入适配。MP3 编码、Layer I/II、SIMD 和定点实现属于独立范围。
 
 ## 许可证
 
 项目代码采用 [Apache-2.0](LICENSE)。解码实现参考固定版本的 minimp3；其原始代码采用 CC0-1.0，许可文本保留在 [`third_party/minimp3/LICENSE`](third_party/minimp3/LICENSE)。仓库中复制的上游测试向量来自该版本的 `vectors/`，逐项来源和 SHA-256 见 [`tests/corpus/manifest.json`](tests/corpus/manifest.json)；它们不属于本项目原创代码。
+
+内置提示音由本项目合成，采用 Apache-2.0；来源和复现方法见[演示素材说明](examples/browser/SAMPLE.md)。

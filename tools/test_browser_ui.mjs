@@ -77,8 +77,72 @@ try {
   });
   await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Error");
   assert.equal(await page.locator("#play").isDisabled(), true);
+
+  // The bundled sample uses the same limits as a user-selected file.
+  await pcmLimit.fill("267263");
+  await page.locator("#demo-button").click();
+  await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Error");
+  assert.match(await page.locator("#message").textContent(), /PCM sample limit/);
+  await pcmLimit.fill("267264");
+  await page.locator("#demo-button").click();
+  await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Ready");
+  assert.equal(await page.locator("#file-name").textContent(), "sample.mp3");
+  assert.match(await page.locator("#track-meta").textContent(), /44,100 Hz.*Stereo.*0:03/);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.locator("#play").click();
+  await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Playing");
+  await page.locator("#play").click();
+  await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Paused");
+
+  for (const failure of ["http", "network", "empty"]) {
+    await page.route("**/sample.mp3", (route) => {
+      if (failure === "http") return route.fulfill({ status: 404, body: "Missing demo" });
+      if (failure === "empty") return route.fulfill({ status: 204 });
+      return route.abort();
+    });
+    await page.locator("#demo-button").click();
+    await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Error");
+    assert.equal(await page.locator("#play").isDisabled(), true);
+    assert.match(await page.locator("#message").textContent(),
+      failure === "http" ? /HTTP 404/ : failure === "empty" ? /No demo audio/ : /fetch/i);
+    await page.unroute("**/sample.mp3");
+    await page.locator("#demo-button").click();
+    await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Ready");
+  }
+
+  // Delay the download to check both the settings snapshot and stale-response guard.
+  for (const newerFile of [false, true]) {
+    let release;
+    let requested;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const started = new Promise((resolve) => { requested = resolve; });
+    await page.route("**/sample.mp3", async (route) => {
+      requested();
+      await pending;
+      await route.fulfill({ path: path.join(root, "examples/browser/sample.mp3") });
+    });
+    await pcmLimit.fill("267264");
+    await page.locator("#demo-button").click();
+    await started;
+    if (newerFile) {
+      await page.locator("#file-input").setInputFiles(
+        path.join(root, "tests/corpus/upstream/l3-he_32khz.bit"),
+      );
+      await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Ready");
+    } else {
+      await pcmLimit.fill("1");
+    }
+    release();
+    await page.waitForLoadState("networkidle");
+    await page.waitForFunction(() => document.querySelector("#state-badge").textContent === "Ready");
+    assert.equal(await page.locator("#file-name").textContent(),
+      newerFile ? "l3-he_32khz.bit" : "sample.mp3");
+    assert.match(await page.locator("#track-meta").textContent(),
+      newerFile ? /32,000 Hz.*Mono/ : /44,100 Hz.*Stereo/);
+    await page.unroute("**/sample.mp3");
+  }
   assert.deepEqual(errors, []);
-  console.log("Browser UI: adjustable PCM limit, exact sample boundary, invalid-value recovery, load, waveform, play/pause, seek, error, desktop/mobile passed");
+  console.log("Browser UI: PCM limits, demo audio, download errors/retry, settings snapshot, stale load, waveform, play/pause, seek, desktop/mobile passed");
 } finally {
   await browser.close();
 }

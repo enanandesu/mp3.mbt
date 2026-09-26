@@ -6,6 +6,8 @@ A pure MoonBit decoder for MPEG-1, MPEG-2, and MPEG-2.5 Layer III. It accepts co
 
 The library offers whole-input and synchronous incremental decoding. A native MP3-to-WAV command and a browser playback demo are included. On the fixed local benchmark, native and wasm release builds exceeded the 10x and 1x realtime targets. Strict decoding and explicit compatibility recovery are available; see the declared acceptance scope and [measured results](docs/TEST_RESULTS.md).
 
+Start with the [practical walkthrough: convert a recording to WAV and preview it locally](docs/USAGE.en.md). An original synthesized chime is included; click **Load demo audio → Play** in the browser.
+
 ## Supported input and boundaries
 
 - Nine sampling rates across MPEG-1/2/2.5 Layer III; mono, stereo, and joint stereo (Mid/Side and intensity).
@@ -23,7 +25,7 @@ For local development, place the consumer and this repository in a shared MoonBi
 members = ["myapp", "mp3.mbt"]
 ```
 
-Declare `enanandesu/mp3@0.1.0` in the consumer's `moon.mod`, then import `enanandesu/mp3` in its `moon.pkg`. If the module is published later, `moon add enanandesu/mp3` can fetch it.
+Declare `enanandesu/mp3@0.1.0` in the consumer's `moon.mod`, then import `enanandesu/mp3` in its `moon.pkg`. If a release is available on mooncakes.io, `moon add enanandesu/mp3` can fetch it instead.
 
 Whole-input decoding:
 
@@ -42,18 +44,18 @@ For streaming, create `@mp3.Decoder::new()`, pass bytes to `push(input, offset?)
 
 ### Native MP3 to WAV
 
-Run from the repository root:
-
-```sh
-moon run examples/mp3-to-wav --target native --release -- input.mp3 output.wav
-```
-
-The command streams input through the MoonBit decoder and writes 16-bit little-endian PCM in a standard RIFF WAV file. It retains the original rate and channels, refuses to overwrite an existing output, and removes a partial output after failure. The RIFF size limit is about 4 GiB. On Windows with the pinned MinGW toolchain, set these PowerShell variables first:
+Run from the repository root. On Windows with the pinned MinGW toolchain, set these PowerShell variables first:
 
 ```powershell
 $env:MOON_CC = (Resolve-Path tools/moon-cc-mingw.cmd).Path
 $env:MOON_AR = (Get-Command ar).Source
 ```
+
+```sh
+moon run examples/mp3-to-wav --target native --release -- input.mp3 output.wav
+```
+
+The command streams input through the MoonBit decoder and writes 16-bit little-endian PCM in a standard RIFF WAV file. It retains the original rate and channels, refuses to overwrite an existing output, and removes a partial output after failure. The RIFF size limit is about 4 GiB.
 
 ### Browser playback
 
@@ -62,11 +64,11 @@ moon build examples/browser --target js --release
 python -m http.server 9010
 ```
 
-Open [the local demo](http://127.0.0.1:9010/examples/browser/). Select or drop an MP3 to play, pause, seek, adjust volume, and view its waveform. The MoonBit JS build produces PCM; Web Audio only plays that PCM. Files stay in the browser.
+Open [the local demo](http://127.0.0.1:9010/examples/browser/), click **Load demo audio** or select/drop your own MP3, then press **Play**. You can pause, seek, adjust volume, and view its waveform. The MoonBit JS build produces PCM; Web Audio only plays that PCM. Files stay in the browser.
 
-Adjust both limits before choosing or dropping the next file:
+Adjust both limits before loading the next audio file:
 
-- **File size limit (MiB)** caps compressed input. It defaults to 16 MiB; the suggested desktop ceiling is 512 MiB and can be raised further, depending on available memory.
+- **File size limit (MiB)** caps compressed input. It defaults to 16 MiB; the suggested desktop ceiling is 512 MiB and can be raised further, depending on available memory. The [capacity test](docs/TEST_RESULTS.md#示例与辅助检查) used large tags and short audio; it does not establish capacity for 512 MiB of long audio, which also needs a sufficient PCM limit.
 - **Decoded PCM limit (samples)** caps the total interleaved samples across all channels. It defaults to 10 million and accepts integers from 1 to 2147483647. The page passes this value to `decode_mp3(data, max_output_samples)`, which sets `Limits.max_output_samples`. The live estimate shows duration at 44.1 kHz stereo and f32 PCM size: about 1:53 and 38.1 MiB at the default. Raising it permits longer audio. PCM size excludes additional decoding, copying, and playback memory; the integer range is not a browser memory guarantee.
 
 If a file exceeds either limit, adjust the setting and choose or drop it again. Serve the page over HTTP rather than opening `index.html` directly.
@@ -118,3 +120,5 @@ Future demand may justify gapless trimming, CRC validation, seeking/indexing, fu
 ## License
 
 Project code is [Apache-2.0](LICENSE). The decoder is adapted from a pinned minimp3 revision, whose original code is CC0-1.0; its license is kept in [`third_party/minimp3/LICENSE`](third_party/minimp3/LICENSE). Mirrored upstream test vectors come from that revision's `vectors/` directory; [`tests/corpus/manifest.json`](tests/corpus/manifest.json) records their individual origins and SHA-256 hashes. They are not original project code.
+
+The bundled chime was synthesized for this project and is Apache-2.0; see [sample provenance and reproduction](examples/browser/SAMPLE.md).

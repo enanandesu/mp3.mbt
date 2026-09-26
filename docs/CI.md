@@ -1,6 +1,8 @@
 # CI 与平台工具链
 
-仓库提供两套独立门槛。2026-09-26 的本地复核包括工作流静态检查及 Windows/WSL 验收，浏览器交互在本机 Edge 验证。随后 Linux CI 暴露的安装权限问题及 2026-09-27 的修复验证见文末；修复后的远端 Actions 结果尚未验证。
+仓库提供自动便携检查和手动完整参考验收两套独立门槛。2026-09-27（UTC+8）已核实：提交 [`058c499`](https://github.com/enanandesu/mp3.mbt/commit/058c499bdc1482be77893e5440894dd53a6d570b) 的 [Portable checks 运行 #36256727757](https://github.com/enanandesu/mp3.mbt/actions/runs/36256727757) 成功，包含 Linux 工具链安装、四后端检查与测试、格式、异常输入回归、WAV/JS 示例和 Chrome 交互测试。
+
+这是该提交的远端记录；后续状态以 [Actions 页面](https://github.com/enanandesu/mp3.mbt/actions) 为准。手动完整参考工作流尚无远端运行记录，其 Windows/WSL 本地验收证据见下文和[测试结果](TEST_RESULTS.md)。自动便携检查成功不等于完成了 self-hosted 的全部参考验收。
 
 | 工作流 | 触发方式 | 验证内容 |
 | --- | --- | --- |
@@ -54,7 +56,7 @@ UI 测试助手会创建临时 loopback HTTP 服务并在测试后关闭。Windo
 
 - Windows 原工具链锁校验、完整集成验收、四项环境门槛回归测试、锁定的 `npm ci`、WAV/JS 示例与 Edge UI 测试通过；两个工作流通过 `actionlint 1.7.12`。
 - WSL Ubuntu 24.04 在独立 Linux 锁下完成 `python tools/validate_compatibility.py`，退出码为 0。原 `reference_policy.json`、Windows 锁和语料哈希均未改变；FFmpeg 7.0.2 通过原冻结参考门槛。四后端各通过 95 项仓库测试、83 项既有兼容性测试、11 项完整 ISO 子集 PCM/分块检查、31 项严格与兼容鲁棒套件、558 项完整 PCM 矩阵。ISO 的 f32 RMSE 全部为 0，严格模式仍是 7 项 PCM 通过与 4 项预期拒绝。
-- Linux 的 WAV 元数据/PCM/失败清理和 JS 桥接示例已执行通过。WSL 没有 Chrome/Chromium，因此没有执行 Linux 浏览器 UI；该项与 GitHub hosted runner 的首次远端执行仍待有相应环境时验证。Windows Edge UI 的结果不替代 Linux UI 结果。
+- Linux 的 WAV 元数据/PCM/失败清理和 JS 桥接示例已执行通过。当时 WSL 没有 Chrome/Chromium，因此该次本地验证未执行 Linux 浏览器 UI；后续 GitHub hosted Ubuntu 上的 Chrome 交互测试已通过，见页首远端运行记录。
 
 Linux 完整日志与机器可读结果位于本次隔离副本的 `target/linux-validation/workspace/target/`，分别为 `linux-compatibility.log`、`iso-layer3/results.json`、`robustness-validation/results.json` 和 `matrix-validation/results.json`；它们均为忽略的本地验证输出。
 

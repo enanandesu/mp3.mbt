@@ -1,6 +1,6 @@
 # 测试结果与验收范围
 
-2026-09-26 验证。Windows 11 / Intel Core i9-14900HX 的完整参考环境见 [`tools/toolchain.lock.json`](../tools/toolchain.lock.json)。Linux/WSL 的独立工具链与执行范围见 [CI 说明](CI.md)；浏览器、native、wasm 的逐批性能及进程内存测量见 [性能记录](PERFORMANCE.md)。以下均为所列输入和配置的实测，不构成完整 ISO 认证或任意损坏字节安全性的证明。
+本页记录 2026-09-26 的完整验收基线及 2026-09-27 的补充验证，各次范围在下文注明。Windows 11 / Intel Core i9-14900HX 的完整参考环境见 [`tools/toolchain.lock.json`](../tools/toolchain.lock.json)。Linux/WSL 的独立工具链与执行范围、远程工作流执行记录见 [CI 说明](CI.md)；浏览器、native、wasm 的逐批性能及进程内存测量见 [性能记录](PERFORMANCE.md)。以下均为所列输入和配置的实测，不构成完整 ISO 认证或任意损坏字节安全性的证明。
 
 ## 验收门槛
 
@@ -15,7 +15,7 @@
 | 异常与模糊回归 | 四后端各 **31/31** suites | 16 个固定异常文件、256 个随机输入、384 次位翻转、384 次截断、7 个 1 MiB 输入及四类已知恢复向量 |
 | 码率/声道矩阵 | 四后端各 **558/558** | 504 个完整语法流 + 54 个编码音频流，均比较 minimp3 和 FFmpeg；包含 126 个 Dual Channel 流 |
 
-四后端为 `native`、`wasm`、`wasm-gc`、`js`。上表的完整集成门槛已在 Windows 与同机 WSL2 Ubuntu 24.04 各通过一次；WSL 是另一操作系统环境，不代表独立硬件或裸机 Linux。默认 `python tools/validate_compatibility.py` 串行执行原参考门槛以及新增 ISO、鲁棒性和矩阵门槛；任一失败或超时均使整个命令失败。
+四后端为 `native`、`wasm`、`wasm-gc`、`js`。2026-09-26，上表的完整集成门槛在 Windows 与同机 WSL2 Ubuntu 24.04 均通过；WSL 是另一操作系统环境，不代表独立硬件或裸机 Linux。默认 `python tools/validate_compatibility.py` 串行执行原参考门槛以及 ISO、鲁棒性和矩阵门槛；任一失败或超时均使整个命令失败。
 
 ## ISO 子集与恢复
 
@@ -55,13 +55,17 @@ native 对每个浮点样本执行数值比较。四后端附加测试按每帧�
 
 ## 示例与辅助检查
 
-Windows 的 Python 辅助测试 **20/20** 通过；MP3→WAV 示例在三个输入上的 s16 PSNR 分别为 **127.74 / 114.90 / 117.05 dB**，并验证拒绝覆盖现有文件、截断输入失败后清理输出。JS 桥接验证 22050 Hz、双声道、444672 个采样以及无音频错误；Edge 交互验证加载、波形、播放/暂停、seek、错误提示和响应式宽度。
+2026-09-26，Windows 的 Python 辅助测试 **20/20** 通过；MP3→WAV 示例在三个输入上的 s16 PSNR 分别为 **127.74 / 114.90 / 117.05 dB**，并验证拒绝覆盖现有文件、截断输入失败后清理输出。JS 桥接验证 22050 Hz、双声道、444672 个采样以及无音频错误；Edge 交互验证加载、波形、播放/暂停、seek、错误提示和响应式宽度。
+
+2026-09-27，新增 Linux 安装执行权限回归后，WSL 原生 ext4 中的 Python 辅助测试 **22/22** 通过，四后端各通过检查及 **95/95** 仓库测试。新增的两项权限测试在 Windows 或忽略 POSIX 权限的挂载盘上会跳过；这些跳过不计为权限验证成功。首次提取、缓存重装及权限复现的具体范围见 [CI 说明](CI.md#2026-09-27-linux-安装执行权限修复)。
 
 2026-09-26 的浏览器可调文件限额验证默认拒绝、调大后加载、非法值修正、拖放及恰好上限/超出 1 字节的边界。本机 Edge 成功加载 **512 MiB** 的人工输入（32 个有界 ID3v2 标签加固定的 5.4 秒音频），renderer 生命周期峰值约 **624 MiB**；该实验验证输入容量，不代表同体积的长音频解码验收。该次测量的输出限额为 1000 万个交织采样；当前页面也可单独调整这一限额。
 
 2026-09-27 的可调 PCM 限额验证覆盖页面到 `Limits.max_output_samples` 的传参：浏览器使用 172800 个采样的固定输入，上限设为 172799 时拒绝、调到 172800 后重新加载成功，非法值修正后可恢复。JS 桥接另验证 444672/444671 的精确边界，并将固定语料拼接为 **10227456 个采样**：旧默认 10000000 拒绝，提高到完整样本数后成功。该入口拒绝非整数、非数字及 Int 溢出；播放、波形和窄屏检查通过。Windows 完整 `validate_compatibility.py` 再次通过基础参考及四后端各 95/83/11/31/558 项门槛，日志保留在 `target/browser-pcm-compatibility.log`。
 
-mixed 专项在限定补丁的独立 mpg123 参考下 **16/16** 通过，其中 8 kHz 8 例、12/24 kHz 对照各 4 例；全组最大绝对误差约 **1.3e-8**，来自 12/24 kHz 对照。MS 与 intensity 同时启用的组合不属于该独立参考的验收范围。格式检查、工作流 actionlint 静态检查和本地打包清单检查通过；这些不替代首次远程 CI 执行。
+同日的[实际用例](USAGE.md)复核使用新增的原创提示音：native 转换得到 44100 Hz、双声道、267264 个交织采样的 s16 WAV；文档分析代码在独立 JS 使用方运行得到约 3.030204 秒和 0.3119923 的采样峰值。Edge UI 验证内置音频加载与播放、267263/267264 的 PCM 边界、HTTP/网络/空响应失败后的重试、加载时限额快照、旧请求不覆盖新文件，以及 390/320 像素宽度。常规 `moon check`、`moon test`（95/95）、格式检查、WAV/JS 示例及 Windows Python 辅助测试（20 通过、2 项 POSIX 测试跳过）通过。本次用例与文档变更未重新运行完整 PCM 差分套件；解码行为未变。
+
+mixed 专项在限定补丁的独立 mpg123 参考下 **16/16** 通过，其中 8 kHz 8 例、12/24 kHz 对照各 4 例；全组最大绝对误差约 **1.3e-8**，来自 12/24 kHz 对照。MS 与 intensity 同时启用的组合不属于该独立参考的验收范围。上述本地复核还包括格式检查、工作流 actionlint 静态检查和打包清单检查；远程 CI 的执行范围及结果另见 [CI 说明](CI.md)。
 
 ## 复现
 
@@ -81,4 +85,4 @@ node tools/benchmark_browser.mjs
 
 完整参考门槛先精确验证工具链和固定源码。`--skip-foundation` 仅用于同一轮已经通过基础验证的情况。也可独立运行 `validate_iso_layer3.py --require-all`、`validate_robustness.py` 和 `validate_matrix.py`；它们默认运行全部四后端。
 
-机器可读结果写入 `target/iso-layer3/results.json`、`target/robustness-validation/results.json`、`target/matrix-validation/results.json` 及性能脚本各自的目录。浏览器依赖、CI 工作流和自托管参考 runner 的准备方式见 [CI 说明](CI.md)。本地执行和工作流静态校验不等于远程 GitHub Actions 已运行。
+机器可读结果写入 `target/iso-layer3/results.json`、`target/robustness-validation/results.json`、`target/matrix-validation/results.json` 及性能脚本各自的目录。浏览器依赖、CI 工作流、自托管参考 runner 的准备方式及远程执行记录统一见 [CI 说明](CI.md)。

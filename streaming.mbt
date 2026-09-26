@@ -5,7 +5,7 @@
 
 ///|
 /// Byte limits include headers; free-format base excludes padding. The output
-/// limit applies to decode_all only, never to incremental lifetime output.
+/// limit applies to whole-input helpers only, never to incremental lifetime output.
 pub(all) struct Limits {
   max_buffer_bytes : Int
   max_tag_bytes : Int

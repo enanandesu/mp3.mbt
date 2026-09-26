@@ -6,7 +6,7 @@ const ui = {
   trackMeta: $("track-meta"), badge: $("state-badge"), waveform: $("waveform"),
   seek: $("seek"), currentTime: $("current-time"), duration: $("duration"),
   play: $("play"), restart: $("restart"), volume: $("volume"), message: $("message"),
-  fileSizeLimit: $("file-size-limit"),
+  fileSizeLimit: $("file-size-limit"), demo: $("demo-button"),
   pcmSampleLimit: $("pcm-sample-limit"), pcmLimitSummary: $("pcm-limit-summary"),
 };
 
@@ -189,14 +189,13 @@ globalThis.mp3Demo = {
     ui.seek.disabled = true;
     ui.trackMeta.textContent = "No playable audio";
     setState("Error", message === "OutputLimit"
-      ? "Decoded audio exceeds your PCM sample limit. Increase the decoded PCM limit and choose or drop the file again."
+      ? "Decoded audio exceeds your PCM sample limit. Increase the decoded PCM limit and load the audio again."
       : message, true);
     updateTimeline();
   },
 };
 
-async function loadFile(file) {
-  if (!file) return;
+async function loadAudio(name, readFile) {
   const limitMiB = ui.fileSizeLimit.valueAsNumber;
   const limitBytes = limitMiB * 1024 * 1024;
   if (!ui.fileSizeLimit.checkValidity() || !Number.isSafeInteger(limitBytes)) {
@@ -215,19 +214,22 @@ async function loadFile(file) {
   buffer = null;
   envelope = [];
   position = 0;
-  ui.fileName.textContent = file.name;
-  ui.trackMeta.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MiB`;
+  ui.fileName.textContent = name;
+  ui.trackMeta.textContent = "Reading audio...";
   ui.play.disabled = true;
   ui.restart.disabled = true;
   ui.seek.disabled = true;
   ui.play.textContent = "Play";
   setState("Loading", "Reading and decoding file...");
   updateTimeline();
-  if (file.size > limitBytes) {
-    globalThis.mp3Demo.receiveError(`This file exceeds your ${limitMiB} MiB limit. Increase the file size limit and choose or drop it again.`);
-    return;
-  }
   try {
+    const file = await readFile();
+    if (id !== loadingId) return;
+    ui.trackMeta.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MiB`;
+    if (file.size > limitBytes) {
+      globalThis.mp3Demo.receiveError(`This file exceeds your ${limitMiB} MiB limit. Increase the file size limit and load it again.`);
+      return;
+    }
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (id !== loadingId) return;
     await new Promise(requestAnimationFrame);
@@ -237,6 +239,22 @@ async function loadFile(file) {
     if (id === loadingId) globalThis.mp3Demo.receiveError(String(error));
   }
 }
+
+function loadFile(file) {
+  if (file) return loadAudio(file.name, async () => file);
+}
+
+ui.demo.addEventListener("click", () => loadAudio("sample.mp3", async () => {
+  // Request bytes from the beginning; this also avoids media-download interception
+  // by download helpers that otherwise replace this MP3 response with an empty 204.
+  const response = await fetch(new URL("sample.mp3", import.meta.url), {
+    headers: { Range: "bytes=0-" },
+  });
+  if (!response.ok) throw new Error(`Could not load demo audio (HTTP ${response.status}).`);
+  const file = await response.blob();
+  if (!file.size) throw new Error("No demo audio received. Use Choose MP3 to open examples/browser/sample.mp3.");
+  return file;
+}));
 
 ui.fileSizeLimit.addEventListener("input", () => ui.fileSizeLimit.setCustomValidity(""));
 ui.pcmSampleLimit.addEventListener("input", () => {

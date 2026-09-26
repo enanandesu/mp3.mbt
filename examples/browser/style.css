@@ -51,6 +51,9 @@ h1 { margin: 0; font-size: 28px; line-height: 1.2; font-weight: 650; }
 .choose-button:hover { background: #155446; }
 #file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
+.demo-option { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-top: 14px; color: #627671; font-size: 13px; }
+.demo-option .secondary-button { padding: 0 14px; }
+
 .file-limit-setting { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px; color: #5c716b; font-size: 13px; }
 .file-limit-setting input { width: 96px; min-width: 0; padding: 7px 9px; border: 1px solid #b9cbc5; border-radius: 4px; background: #fff; color: #1b282b; font: inherit; }
 #pcm-sample-limit { width: 160px; }

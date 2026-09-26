@@ -1,6 +1,6 @@
 # 跨环境性能与内存实测
 
-此页记录 2026-09-26 的 release 构建实测。计时、进程峰值常驻内存和 JavaScript 堆占用是不同指标；这些短语料的结果不外推到所有设备、长音频、持续播放或兼容模式恢复路径。性能脚本检查固定语料哈希及输出规模；浏览器额外检查全部 PCM 值有限，native/wasm 微基准消费抽样 PCM 校验和。完整 PCM 差分正确性由另外的验证脚本检查。
+此页记录 2026-09-26 的 release 构建实测，保留该次源码和产物的标识；后续浏览器限额设置变更未在本页重新计时。计时、进程峰值常驻内存和 JavaScript 堆占用是不同指标；这些短语料的结果不外推到所有设备、长音频、持续播放或兼容模式恢复路径。性能脚本检查固定语料哈希及输出规模；浏览器额外检查全部 PCM 值有限，native/wasm 微基准消费抽样 PCM 校验和。完整 PCM 差分正确性由另外的验证脚本检查。
 
 ## 复现
 
@@ -33,7 +33,7 @@ Linux native 峰值测试另需 `/usr/bin/time`，报告记录其版本与二进
 
 ## Windows 浏览器 JS
 
-环境：Intel(R) Core(TM) i9-14900HX，32 个逻辑处理器；Windows 11 `10.0.26200` x64；Edge `153.0.4234.48` 无头模式；Node `v20.17.0`；Moon `moon 0.1.20260920 (914d7da 2026-09-20)`。最终串行实测记录于 `2026-09-26T14:52:50.851Z`，构建 JS 模块 SHA-256 为 `3052d4d2e180a459fade4fcdd5f505281c27a056e36b8dd78570ce0050290b69`。
+环境：Intel(R) Core(TM) i9-14900HX，32 个逻辑处理器；Windows 11 `10.0.26200` x64；Edge `153.0.4234.48` 无头模式；Node `v20.17.0`；Moon `moon 0.1.20260920 (914d7da 2026-09-20)`。该次串行实测记录于 `2026-09-26T14:52:50.851Z`，构建 JS 模块 SHA-256 为 `3052d4d2e180a459fade4fcdd5f505281c27a056e36b8dd78570ce0050290b69`。
 
 [`tools/benchmark_browser.mjs`](../tools/benchmark_browser.mjs) 直接调用真实浏览器中的 release `decode_mp3`，包含 MoonBit 解码和桥接层的 PCM 复制，不调用浏览器原生 MP3 解码。先加载输入，再预热 3 次；测 7 批、每批 5 次，每次仅给 `decode_mp3` 计时。输入获取、输出校验、绘图、Web Audio 和播放不在计时区内。门槛为每项中位数达到 1× 实时。
 
@@ -55,9 +55,9 @@ Linux native 峰值测试另需 `/usr/bin/time`，报告记录其版本与二进
 
 ## Windows 与 Linux native / wasm
 
-Windows 与 Linux 使用同一台 i9-14900HX 主机。Linux 是 **Ubuntu 24.04.5 LTS / WSL2**，实测内核环境为 `Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39`，并非另一台设备或独立 Linux 裸机。两者使用相同版本的 MoonBit，外部工具分别按 [`Windows 锁`](../tools/toolchain.lock.json) 与 [`Linux 锁`](../tools/toolchain.linux-x86_64.lock.json) 检查。最终生产库源码 SHA-256 均为 `898b6f648b4cce59bbf7f9e6ad3d07887c44708594603d9dd12d7505f9b7dda1`；最终测量前另外逐文件比对了 20 个生产 `.mbt` 文件（含示例），内容一致。
+Windows 与 Linux 使用同一台 i9-14900HX 主机。Linux 是 **Ubuntu 24.04.5 LTS / WSL2**，实测内核环境为 `Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39`，并非另一台设备或独立 Linux 裸机。两者使用相同版本的 MoonBit，外部工具分别按 [`Windows 锁`](../tools/toolchain.lock.json) 与 [`Linux 锁`](../tools/toolchain.linux-x86_64.lock.json) 检查。该次生产库源码 SHA-256 均为 `898b6f648b4cce59bbf7f9e6ad3d07887c44708594603d9dd12d7505f9b7dda1`；测量前另外逐文件比对了 20 个生产 `.mbt` 文件（含示例），内容一致。
 
-最终记录时间：Windows `2026-09-26T14:52:26.312118+00:00`；Linux `2026-09-26T14:54:05.277890+00:00`。完整正确性回归结束后按 Windows release、browser、memory、Linux release、memory 顺序执行，未并行运行本项目验证负载；没有锁定 CPU 频率或隔离所有系统后台活动。这是分环境可复现的基线，不用来断言操作系统之间的性能优劣。
+该次记录时间：Windows `2026-09-26T14:52:26.312118+00:00`；Linux `2026-09-26T14:54:05.277890+00:00`。完整正确性回归结束后按 Windows release、browser、memory、Linux release、memory 顺序执行，未并行运行本项目验证负载；没有锁定 CPU 频率或隔离所有系统后台活动。这是分环境可复现的基线，不用来断言操作系统之间的性能优劣。
 
 [`tools/benchmark_release.py`](../tools/benchmark_release.py) 对 `decode_all`（整段）与 `Decoder`（增量）预热 3 次，再测 7 批、每批 5 次；计时包含解码和抽样 PCM 校验和，排除文件 I/O 与测试输入构造。native 每项中位数门槛为 10× 实时，wasm 为 1×。wasm 使用 MoonBit 测试运行器，不能标为浏览器性能。
 
@@ -116,7 +116,7 @@ Windows 与 Linux 使用同一台 i9-14900HX 主机。Linux 是 **Ubuntu 24.04.5
 
 ## native 命令进程峰值
 
-[`tools/benchmark_memory.py`](../tools/benchmark_memory.py) 对 release `mp3-to-wav` 每项启动 3 个新进程，并检查输出 WAV 元信息。数字包括进程启动、读文件、完整 PCM、转为 s16 WAV 和写文件；与上面的 browser renderer 指标不能直接用于判断语言运行时内存效率。
+[`tools/benchmark_memory.py`](../tools/benchmark_memory.py) 对 release `mp3-to-wav` 每项启动 3 个新进程，并检查输出 WAV 元信息。数字包括进程启动、读文件、逐帧解码 PCM、转为 s16 和写出 WAV；该命令不累计整段 PCM。与上面的 browser renderer 指标不能直接用于判断语言运行时内存效率。
 
 | 输入 | Windows 三次进程峰值，MiB | Windows 最大值 | Linux 三次进程峰值，MiB | Linux 最大值 |
 | --- | --- | ---: | --- | ---: |
@@ -130,4 +130,4 @@ Linux 记录于 `2026-09-26T14:54:53.631097+00:00`，release ELF 可执行文件
 
 ## 证据边界
 
-浏览器测量仅覆盖 Windows Edge 的 JS 后端；没有验证 Linux 浏览器、Firefox、Safari、浏览器 Wasm、移动设备或音频硬件延迟。跨操作系统测量覆盖同一台主机的 Windows 与 Linux / WSL2，尚不包括 macOS、ARM 或独立 Linux 裸机。三段输入不足以证明长音频内存上界。
+本页的浏览器性能测量仅覆盖 Windows Edge 的 JS 后端；未测量 Linux 浏览器、Firefox、Safari、浏览器 Wasm、移动设备或音频硬件延迟。浏览器功能与交互的 CI 验证范围另见 [CI 说明](CI.md)。跨操作系统测量覆盖同一台主机的 Windows 与 Linux / WSL2，尚不包括 macOS、ARM 或独立 Linux 裸机。三段输入不足以证明长音频内存上界。

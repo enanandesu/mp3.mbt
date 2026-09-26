@@ -44,8 +44,9 @@ free-format 搜索、搜索上限和帧长上限由 `internal/framing` 与增量
   所有 emphasis 值仅记录，均不执行去加重滤波。
 - `sync_compatible` 对已验证的 Layer III 头部保持 `hdr_compare` 的语义：
   版本、采样率、是否 free-format 必须一致，码率、CRC、padding 和声道模式可变。
-  `stream_compatible` 另外限制声道数不变，符合本项目的流内格式约束；
-  双声道的 Stereo/JointStereo/DualChannel 互换不算声道数变化。
+  `stream_compatible` 另外限制声道数不变，用于默认严格模式；显式兼容模式
+  使用 `sync_compatible` 允许声道数变化。双声道的
+  Stereo/JointStereo/DualChannel 互换不算声道数变化。
 - free-format 用 `None` 表达未知码率/长度；只有调用者提供已确认长度时才计算。
   对明显短于头部开销或加 padding 会溢出的长度返回结构化错误。
 
