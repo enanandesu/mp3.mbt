@@ -1,6 +1,6 @@
 # CI 与平台工具链
 
-仓库提供两套独立门槛。GitHub 工作流须推送到远端后才会运行；本次检查了工作流语法，并在本地 Windows/WSL 执行验收命令，没有创建远端运行记录。浏览器交互在本机 Edge 验证，hosted Linux 的 Chrome 步骤还需首次远端运行确认。
+仓库提供两套独立门槛。2026-09-26 的本地复核包括工作流静态检查及 Windows/WSL 验收，浏览器交互在本机 Edge 验证。随后 Linux CI 暴露的安装权限问题及 2026-09-27 的修复验证见文末；修复后的远端 Actions 结果尚未验证。
 
 | 工作流 | 触发方式 | 验证内容 |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ python tools/benchmark_release.py
 python tools/benchmark_memory.py
 ```
 
-安装器只向被忽略的 `target/ci-portability/` 解包，不修改系统工具。MoonBit/core 固定为 `0.10.14+7d59c7ec9`，Node 固定为 `20.17.0`；`--with-reference` 另外解包固定 SHA-256 的 FFmpeg `7.0.2` 静态构建。所有下载档案与缓存命中都必须先通过校验。完整参考命令仍要求宿主工具匹配 Linux 锁，安装器不会自动改变 GCC 或 Python。
+安装器只向被忽略的 `target/ci-portability/` 解包，不修改系统工具。MoonBit/core 固定为 `0.10.14+7d59c7ec9`，Node 固定为 `20.17.0`；`--with-reference` 另外解包固定 SHA-256 的 FFmpeg `7.0.2` 静态构建。所有下载档案与缓存命中都必须先通过校验。解包后按明确清单为 MoonBit 的 13 个原生程序补充执行位，再运行 core bundle；`.wasm` 等数据文件不增加执行位。完整参考命令仍要求宿主工具匹配 Linux 锁，安装器不会自动改变 GCC 或 Python。
 
 MoonBit 版本下载服务可能清理旧档案；CI 会缓存已核验的档案，但缓存本身不是长期归档。若上游文件不可用或字节改变，安装会失败，应提供字节完全相同的归档或经过审阅升级版本，不能静默改用 latest。
 
@@ -57,3 +57,11 @@ UI 测试助手会创建临时 loopback HTTP 服务并在测试后关闭。Windo
 - Linux 的 WAV 元数据/PCM/失败清理和 JS 桥接示例已执行通过。WSL 没有 Chrome/Chromium，因此没有执行 Linux 浏览器 UI；该项与 GitHub hosted runner 的首次远端执行仍待有相应环境时验证。Windows Edge UI 的结果不替代 Linux UI 结果。
 
 Linux 完整日志与机器可读结果位于本次隔离副本的 `target/linux-validation/workspace/target/`，分别为 `linux-compatibility.log`、`iso-layer3/results.json`、`robustness-validation/results.json` 和 `matrix-validation/results.json`；它们均为忽略的本地验证输出。
+
+## 2026-09-27 Linux 安装执行权限修复
+
+固定 MoonBit 归档中的原生程序权限为 `0664`，经 `tarfile` 的 data filter 解压后为 `0644`，均无执行位。此前 `/mnt/d` 的 Windows 挂载盘将这些文件显示为 `0777`，没有覆盖这一权限条件。本次在 WSL 原生 ext4 的临时副本中，先用旧脚本复现 `PermissionError`，再验证修复。
+
+修复仅为清单中的原生程序添加 `0o111`，保留文件内容、原有读写位、归档 SHA-256 与工具链锁。使用同一组经校验的缓存归档，空目录首次提取、缓存重装（含 `--with-reference`）及 core bundle 均通过；没有重新测试网络下载。13 个程序实际具有执行位，3 个 Wasm 数据文件没有执行位；完整工具链哈希检查通过。
+
+原生 ext4 中的 Python 测试 **22/22** 通过，包括真实执行 `0664` 归档内程序和缓存重装的两项回归；四后端各通过 `moon check` 和 **95/95** 测试，格式检查通过。权限回归在 Windows 或忽略 POSIX 权限的挂载盘上会明确跳过，这些跳过结果不能代替 Linux 权限验收。日志与结果位于 `target/ci-permissions/`。

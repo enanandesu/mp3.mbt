@@ -26,6 +26,14 @@ ARCHIVES = {
         "url": "https://cli.moonbitlang.com/binaries/0.10.14%2B7d59c7ec9/moonbit-linux-x86_64.tar.gz",
         "sha256": "9226694de9ff978db1ecf820b7710c4224e84ec7a76b19a222d96f0cd4e31b6a",
         "destination": "moon",
+        # This pinned archive stores native programs as 0664. Do not infer
+        # executability from its modes or chmod the adjacent .wasm data files.
+        "executables": [
+            "bin/moon", "bin/moonc", "bin/moonrun", "bin/moonfmt",
+            "bin/mooninfo", "bin/mooncake", "bin/moon-lsp",
+            "bin/moon_cove_report", "bin/moon-wasm-opt", "bin/moon-ide",
+            "bin/moon-cram", "bin/moondoc", "bin/internal/tcc",
+        ],
     },
     "core.tar.gz": {
         "url": "https://cli.moonbitlang.com/cores/core-0.10.14%2B7d59c7ec9.tar.gz",
@@ -81,6 +89,10 @@ def install(name, specification):
                 else:
                     raise RuntimeError(f"Unexpected archive layout: {name}/{member.name}")
         source.extractall(destination, members=members, filter="data")
+    # Also runs for cached archives, before any installed tool is invoked.
+    for relative_path in specification.get("executables", []):
+        executable = destination / relative_path
+        executable.chmod(executable.stat().st_mode | 0o111)
     print(f"Verified and installed {name}", flush=True)
 
 
