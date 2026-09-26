@@ -44,6 +44,8 @@ pub(all) enum DecodeResult {
 ///|
 struct Decoder {
   limits : Limits
+  mode : DecodeMode
+  on_recovery : (Recovery) -> Unit
   ring : FixedArray[Byte]
   core : @layer3.FrameDecoder
   mut head : Int
@@ -66,6 +68,8 @@ struct Decoder {
 /// trailer after two free-format frames. Free-format base is limited to 2304.
 pub fn Decoder::new(
   limits? : Limits = Limits::default(),
+  mode? : DecodeMode = Strict,
+  on_recovery? : (Recovery) -> Unit = _ => (),
 ) -> Decoder raise Mp3Error {
   if limits.max_free_format_bytes < 4 ||
     limits.max_free_format_bytes > 2304 ||
@@ -79,6 +83,8 @@ pub fn Decoder::new(
   }
   {
     limits,
+    mode,
+    on_recovery,
     ring: FixedArray::make(limits.max_buffer_bytes, 0),
     core: @layer3.FrameDecoder::new(),
     head: 0,
@@ -267,7 +273,35 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
     if self.count < 4 && !self.eof {
       return NeedMoreInput
     }
-    let header = match @header.parse(first) {
+    let compatible = self.mode == Compatible
+    // At a known boundary EOF can cut even the four-byte header. Discard only
+    // a valid Layer III header prefix; arbitrary trailing corruption is fatal.
+    if compatible &&
+      self.eof &&
+      self.format is Some(_) &&
+      self.count < 4 &&
+      first[0] == 0xff &&
+      (
+        self.count < 2 ||
+        (
+          (first[1].to_int() & 0xe6) == 0xe2 &&
+          (first[1].to_int() & 0x18) != 0x08
+        )
+      ) &&
+      (
+        self.count < 3 ||
+        (first[2].to_int() >> 4 != 15 && (first[2].to_int() & 12) != 12)
+      ) {
+      let recovery = TruncatedTail(
+        offset=self.source_offset,
+        discarded_bytes=self.count,
+      )
+      self.consume(self.count)
+      (self.on_recovery)(recovery)
+      return EndOfInput
+    }
+    let header = match
+      @header.parse(first, allow_reserved_emphasis=compatible) {
       Ok(header) => header
       Err(_) => {
         if self.format is None && self.scanned < self.limits.max_initial_scan {
@@ -286,7 +320,9 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
         raise UnsupportedFreeFormat
       }
     }
-    if self.format is Some(previous) && !previous.stream_compatible(header) {
+    if self.format is Some(previous) &&
+      !(previous.stream_compatible(header) ||
+      (compatible && previous.sync_compatible(header))) {
       raise FormatChange(self.source_offset)
     }
     let probe_length = match header.frame_bytes() {
@@ -300,6 +336,7 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
       self.eof,
       self.free_size,
       max_free_size=self.limits.max_free_format_bytes,
+      compatible~,
     )
     // Prefer confirmed frame boundaries over a TAG string in main data. Retry
     // EOF tag removal only if the complete view cannot establish free spacing.
@@ -315,6 +352,7 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
           true,
           None,
           max_free_size=self.limits.max_free_format_bytes,
+          compatible~,
         )
         if without_tail is @framing.Frame(_, _) {
           probed = without_tail
@@ -323,15 +361,30 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
     }
     let (length, free_size) = match probed {
       NeedMoreInput(_) => return NeedMoreInput
-      Invalid(@framing.Truncated(length, _)) =>
+      Invalid(@framing.Truncated(length, _)) => {
+        if compatible && self.eof {
+          let recovery = TruncatedTail(
+            offset=self.source_offset,
+            discarded_bytes=self.count,
+          )
+          self.consume(self.count)
+          (self.on_recovery)(recovery)
+          return EndOfInput
+        }
         raise TruncatedFrame(self.source_offset, length)
+      }
       Invalid(error) => {
         // Two free frames plus a trailer have no third header. Reserve bounded
         // tail space and wait for EOF instead of rejecting a valid split input.
         if !self.eof &&
           self.free_size is None &&
           header.bitrate_kbps is None &&
-          pending_free_tail(bytes, header, self.limits.max_free_format_bytes) {
+          pending_free_tail(
+            bytes,
+            header,
+            self.limits.max_free_format_bytes,
+            compatible~,
+          ) {
           return NeedMoreInput
         }
         raise FramingFailure(self.source_offset, error)
@@ -343,18 +396,52 @@ fn Decoder::next_frame_impl(self : Decoder) -> DecodeResult raise Mp3Error {
     } else {
       bytes[:length].to_bytes()
     }
-    let samples = self.core.decode_frame(frame, free_format_size?=free_size) catch {
+    let mut history_gap : (Int, Int)? = None
+    let samples = self.core.decode_frame(
+      frame,
+      free_format_size?=free_size,
+      compatible~,
+      on_history_gap=(required, available) => {
+        history_gap = Some((required, available))
+      },
+    ) catch {
       error => raise DecodeFailure(self.source_offset, error)
     }
+    let previous = self.format
     let result = {
       sample_rate: header.sample_rate_hz,
       channels: header.channels(),
       source_offset: self.source_offset,
       samples,
     }
+    // Commit the consumed frame before invoking caller code. Even a callback
+    // that resets the instance must not leave a negative ring count.
     self.format = Some(header)
     self.free_size = free_size
     self.consume(length)
+    if header.emphasis == @header.ReservedValue {
+      (self.on_recovery)(ReservedEmphasis(offset=result.source_offset, value=2))
+    }
+    if previous is Some(previous) && previous.channels() != header.channels() {
+      (self.on_recovery)(
+        ChannelChange(
+          offset=result.source_offset,
+          previous=previous.channels(),
+          current=header.channels(),
+        ),
+      )
+    }
+    if history_gap is Some((required, available)) {
+      (self.on_recovery)(
+        MissingHistory(
+          offset=result.source_offset,
+          frame_bytes=length,
+          required~,
+          available~,
+        ),
+      )
+      continue
+    }
     return Frame(result)
   } nobreak {
     NeedMoreInput
@@ -366,14 +453,17 @@ fn pending_free_tail(
   data : Bytes,
   header : @header.Header,
   maximum : Int,
+  compatible? : Bool = false,
 ) -> Bool {
   let pad = if header.padding { 1 } else { 0 }
   let end = Int::min(maximum + pad, data.length() - 4)
   for distance = header.main_data_offset()
       distance <= end
       distance = distance + 1 {
-    let second = match @header.parse(data, offset=distance) {
-      Ok(second) if header.stream_compatible(second) => second
+    let second = match
+      @header.parse(data, offset=distance, allow_reserved_emphasis=compatible) {
+      Ok(second) if header.stream_compatible(second) ||
+        (compatible && header.sync_compatible(second)) => second
       _ => continue
     }
     let size = distance - pad + (if second.padding { 1 } else { 0 })

@@ -59,6 +59,7 @@ pub fn probe(
   eof : Bool,
   known_free_size : Int?,
   max_free_size? : Int = 2304,
+  compatible? : Bool = false,
 ) -> Probe {
   // The upper bound ensures every lookahead/minimum-input count fits Int.
   if max_free_size < 4 || max_free_size > 1073741820 {
@@ -71,7 +72,7 @@ pub fn probe(
       NeedMoreInput(4)
     }
   }
-  match @header.parse(data) {
+  match @header.parse(data, allow_reserved_emphasis=compatible) {
     Ok(actual) => if actual != header { return Invalid(HeaderMismatch) }
     Err(_) => return Invalid(InvalidHeader)
   }
@@ -104,8 +105,10 @@ pub fn probe(
   let mut pending = 0
   let mut eof_candidate : Int? = None
   for distance = minimum; distance <= search_end; distance = distance + 1 {
-    let second = match @header.parse(data, offset=distance) {
-      Ok(second) if header.stream_compatible(second) => second
+    let second = match
+      @header.parse(data, offset=distance, allow_reserved_emphasis=compatible) {
+      Ok(second) if header.stream_compatible(second) ||
+        (compatible && header.sync_compatible(second)) => second
       _ => continue
     }
     let base = distance - pad
@@ -115,8 +118,14 @@ pub fn probe(
     }
     let third_offset = distance + second_size
     if third_offset + 4 <= data.length() {
-      match @header.parse(data, offset=third_offset) {
-        Ok(third) if header.stream_compatible(third) =>
+      match
+        @header.parse(
+          data,
+          offset=third_offset,
+          allow_reserved_emphasis=compatible,
+        ) {
+        Ok(third) if header.stream_compatible(third) ||
+          (compatible && header.sync_compatible(third)) =>
           if base + padding(third) >= third.main_data_offset() {
             // Earliest confirmed three-header spacing follows upstream. A
             // multiple of a valid spacing is not a second stream hypothesis.

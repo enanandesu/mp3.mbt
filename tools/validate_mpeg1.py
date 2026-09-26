@@ -203,7 +203,7 @@ def generate_trace_suite(workspace, cases):
 
 
 def native_corpus(cases, policy):
-    executable = OUT / "native-module/target/native/release/build/validation_driver/validation_driver.exe"
+    executable = native_adapter_executable(OUT / "native-module")
     successes = 0
     for case in cases.values():
         name = case["id"]
@@ -263,7 +263,16 @@ def to_s16(value):
     return rounded - (rounded < 0)
 
 
-def build_native_adapter(api="decode_mpeg1", output_root=OUT):
+def native_adapter_executable(workspace):
+    base = workspace / "target/native/release/build/validation_driver/validation_driver"
+    # The pinned MoonBit uses .exe for ELF outputs as well as Windows PE files.
+    for candidate in (base.with_suffix(".exe"), base):
+        if candidate.is_file():
+            return candidate
+    raise RuntimeError(f"Native validation adapter was not produced: {base}")
+
+
+def build_native_adapter(api="decode_mpeg1", output_root=OUT, template=None):
     assert api in ("decode_mpeg1", "decode_all")
     workspace = snapshot_module("native-module", output_root=output_root)
     package = workspace / "validation_driver"
@@ -273,12 +282,14 @@ def build_native_adapter(api="decode_mpeg1", output_root=OUT):
         legacy_package.unlink()
     for name in ("main.mbt", "moon.pkg", "io.c"):
         source = ROOT / "tools/native_decode" / (name + ".in" if name != "io.c" else name)
+        if name == "main.mbt" and template is not None:
+            source = Path(template)
         shutil.copyfile(source, package / name)
     main_path = package / "main.mbt"
     main_path.write_text(main_path.read_text(encoding="utf-8").replace("@mp3.decode_all(data)", f"@mp3.{api}(data)"), encoding="utf-8")
     run(["moon", "-C", workspace, "build", "--target", "native", "--release",
          "--target-dir", workspace / "target", "--deny-warn"])
-    return workspace / "target/native/release/build/validation_driver/validation_driver.exe"
+    return native_adapter_executable(workspace)
 
 
 def main():

@@ -1,0 +1,67 @@
+// Generated vector inputs and independent scalar-C per-frame PCM hashes.
+///|
+fn iso_bytes(chunks : Array[Bytes]) -> Bytes {
+  let bytes : Array[Byte] = []
+  for chunk in chunks { for b in chunk { bytes.push(b) } }
+  Bytes::from_array(bytes)
+}
+///|
+fn iso_frame(frame : PcmFrame, expected : (Int64, Int, Int, Int, UInt, UInt)) -> Unit raise {
+  let (offset, rate, channels, count, hash1, hash2) = expected
+  assert_eq(frame.source_offset, offset)
+  assert_eq(frame.sample_rate, rate)
+  assert_eq(frame.channels, channels)
+  assert_eq(frame.samples.length(), count)
+  let mut h1 = 2166136261U
+  let mut h2 = 0U
+  for sample in frame.samples {
+    let word = sample.reinterpret_as_uint()
+    h1 = (h1 ^ word) * 16777619U
+    h2 = h2 * 65599U + word
+  }
+  assert_eq(h1, hash1)
+  assert_eq(h2, hash2)
+}
+///|
+fn iso_check(data : Bytes, frames : Array[(Int64, Int, Int, Int, UInt, UInt)], recoveries : Array[String]) -> Unit raise {
+  let whole = decode_frames(data, mode=Compatible)
+  assert_eq(whole.frames.length(), frames.length())
+  assert_eq(whole.recoveries.map(event => event.to_string()), recoveries)
+  for i = 0; i < frames.length(); i = i + 1 { iso_frame(whole.frames[i], frames[i]) }
+  for chunks in [[1], [2, 7, 97, 4096], [8192]] {
+    let events : Array[String] = []
+    let decoder = Decoder::new(mode=Compatible, on_recovery=event => events.push(event.to_string()))
+    let mut position = 0
+    let mut frame_index = 0
+    let mut step = 0
+    let mut eof = false
+    while true {
+      step += 1
+      assert_true(step < data.length() * 3 + frames.length() + 100)
+      match decoder.next_frame() {
+        Frame(frame) => {
+          assert_true(frame_index < frames.length())
+          iso_frame(frame, frames[frame_index])
+          frame_index += 1
+        }
+        NeedMoreInput => {
+          assert_true(!eof)
+          if position == data.length() { decoder.finish_input(); eof = true }
+          else {
+            let length = Int::min(chunks[step % chunks.length()], data.length() - position)
+            let accepted = decoder.push(data[position:position + length].to_bytes())
+            assert_true(accepted > 0)
+            position += accepted
+          }
+        }
+        EndOfInput => { assert_true(eof); break }
+      }
+    }
+    assert_eq(frame_index, frames.length())
+    assert_eq(events, recoveries)
+    assert_true(decoder.next_frame() is EndOfInput)
+    assert_eq(events, recoveries)
+    decoder.reset()
+    assert_eq(decoder.buffered_bytes(), 0)
+  }
+}

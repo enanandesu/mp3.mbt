@@ -37,6 +37,20 @@ def compare(reference, candidate, reference_meta, candidate_meta, *,
         if reference_meta[field] != candidate_meta[field]:
             return {"passed": False, "reason": field,
                     "reference": reference_meta[field], "candidate": candidate_meta[field]}
+    return compare_samples(reference, candidate, min_psnr_db=min_psnr_db,
+                           max_rmse=max_rmse, max_abs_error=max_abs_error)
+
+
+def compare_samples(reference, candidate, *, min_psnr_db=96.0,
+                    max_rmse=None, max_abs_error=None):
+    """Compare a serialized PCM extent after the caller verifies frame metadata.
+
+    This also supports mixed-channel streams without inventing one stream-wide
+    channel count. No alignment, cropping, resampling, or threshold changes.
+    """
+    if len(reference) != len(candidate):
+        return {"passed": False, "reason": "sample_count",
+                "reference": len(reference), "candidate": len(candidate)}
     if not reference:
         return {"passed": False, "reason": "empty_pcm"}
     if any(not math.isfinite(x) for pcm in (reference, candidate) for x in pcm):

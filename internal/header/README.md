@@ -1,8 +1,8 @@
 # Layer III 帧头基础模块
 
-`parse(Bytes, offset?=0)` 只读取指定位置的四字节帧头，返回
+`parse(Bytes, offset?=0, allow_reserved_emphasis?=false)` 只读取指定位置的四字节帧头，返回
 `Result[Header, HeaderError]`；不会扫描同步、消费 CRC 或确认帧数据完整。
-不足四字节时返回 `Truncated(available=...)`，由未来的增量解码状态机决定
+不足四字节时返回 `Truncated(available=...)`，由增量解码状态机决定
 当前应返回 `NeedMoreInput` 还是 EOF 截断。
 
 支持 MPEG-1/2/2.5 Layer III、九种采样率、全部表内码率及 free-format 标识。
@@ -14,7 +14,7 @@ side-info 长度、CRC 长度、主数据相对帧起点的位置、帧总长度
 CRC 字段不会重复加到帧长度上。free-format 的码率为 `None`，在没有上下文时
 返回 `Ok(None)`，不会猜测长度。调用者确认**不含 padding 的整帧长度**后，
 可传 `free_format_size=...`，模块检查最小头部开销及加 padding 时的整数溢出。
-本阶段不实现 free-format 搜索，搜索上限和帧长上限留给后续同步状态机。
+free-format 搜索、搜索上限和帧长上限由 `internal/framing` 与增量状态机处理。
 
 ## 固定来源和差异
 
@@ -39,8 +39,9 @@ CRC 字段不会重复加到帧长度上。free-format 的码率为 `None`，在
 - 所有读取先检查剩余长度及 offset，不依赖调用者保证可访问四字节。
 - 本项目只支持 Layer III；Layer I/II 返回 `UnsupportedLayer`，保留层位返回
   `ReservedLayer`；保留版本、码率和采样率编码分别报错。
-- 保留 emphasis 编码 `10` 返回 `ReservedEmphasis`；上游 `hdr_valid` 未检查它。
-  合法 emphasis 仅记录，尚未执行去加重滤波。
+- 默认拒绝保留 emphasis 编码 `10`，返回 `ReservedEmphasis`；兼容模式显式传入
+  `allow_reserved_emphasis=true` 时保留为 `ReservedValue`。上游 `hdr_valid` 未检查它。
+  所有 emphasis 值仅记录，均不执行去加重滤波。
 - `sync_compatible` 对已验证的 Layer III 头部保持 `hdr_compare` 的语义：
   版本、采样率、是否 free-format 必须一致，码率、CRC、padding 和声道模式可变。
   `stream_compatible` 另外限制声道数不变，符合本项目的流内格式约束；

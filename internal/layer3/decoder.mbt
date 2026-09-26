@@ -1,7 +1,8 @@
 // Layer III scheduling follows minimp3.h L3_decode/mp3dec_decode_frame,
 // ea99364f61c14656440e8d77e9c233ccf3124633 (CC0-1.0).
 // Complete frames are explicit here. A malformed frame is fatal until reset;
-// history insufficiency is an error, never a silent zero-sample concealment.
+// strict history insufficiency is fatal. Explicit compatibility warmup retains
+// reservoir data without PCM, and reports the skipped initial frame.
 
 ///|
 pub struct FrameDecoder {
@@ -10,6 +11,7 @@ pub struct FrameDecoder {
   qmf : Array[Float]
   mut previous : @header.Header?
   mut failed : Bool
+  mut has_output : Bool
 }
 
 ///|
@@ -20,6 +22,7 @@ pub fn FrameDecoder::new() -> FrameDecoder {
     qmf: Array::make(960, 0.0),
     previous: None,
     failed: false,
+    has_output: false,
   }
 }
 
@@ -36,6 +39,7 @@ pub fn FrameDecoder::reset(self : FrameDecoder) -> Unit {
   }
   self.previous = None
   self.failed = false
+  self.has_output = false
 }
 
 ///|
@@ -43,11 +47,13 @@ pub fn FrameDecoder::decode_frame(
   self : FrameDecoder,
   frame : Bytes,
   free_format_size? : Int,
+  compatible? : Bool = false,
+  on_history_gap? : (Int, Int) -> Unit = (_, _) => (),
 ) -> Array[Float] raise DecodeError {
   if self.failed {
     raise InvalidFrame("decoder is failed; reset is required")
   }
-  self.decode_frame_impl(frame, free_format_size?) catch {
+  self.decode_frame_impl(frame, free_format_size?, compatible~, on_history_gap~) catch {
     error => {
       self.failed = true
       raise error
@@ -60,8 +66,10 @@ fn FrameDecoder::decode_frame_impl(
   self : FrameDecoder,
   frame : Bytes,
   free_format_size? : Int,
+  compatible~ : Bool,
+  on_history_gap~ : (Int, Int) -> Unit,
 ) -> Array[Float] raise DecodeError {
-  let header = match @header.parse(frame) {
+  let header = match @header.parse(frame, allow_reserved_emphasis=compatible) {
     Ok(header) => header
     Err(_) => raise InvalidFrame("invalid or incomplete header")
   }
@@ -76,13 +84,26 @@ fn FrameDecoder::decode_frame_impl(
         }
     }
   }
-  if self.previous is Some(previous) && !previous.stream_compatible(header) {
+  if self.previous is Some(previous) &&
+    !(previous.stream_compatible(header) ||
+    (compatible && previous.sync_compatible(header))) {
     raise InvalidFrame("stream version, sample rate or channel count changed")
   }
   let side = read_side_info(frame, header, free_format_size?)
   let offset = header.main_data_offset()
   let payload = frame[offset:].to_bytes()
-  let main_data = self.reservoir.restore(payload, side.main_data_begin)
+  let main_data = self.reservoir.restore(payload, side.main_data_begin) catch {
+    InsufficientHistory(required, available) if compatible && !self.has_output => {
+      // Match L3_restore_reservoir followed by L3_save_reservoir with bs.pos=0:
+      // preserve available history and this payload even though no PCM exists.
+      let partial = self.reservoir.restore(payload, available)
+      self.reservoir.save(partial, 0)
+      self.previous = Some(header)
+      on_history_gap(required, available)
+      return []
+    }
+    error => raise error
+  }
   let channels = header.channels()
   let positions : Array[Array[Int]] = [Array::make(39, 0), Array::make(39, 0)]
   let pcm : Array[Float] = []
@@ -133,5 +154,6 @@ fn FrameDecoder::decode_frame_impl(
   }
   self.reservoir.save(main_data, consumed)
   self.previous = Some(header)
+  self.has_output = true
   pcm
 }

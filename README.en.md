@@ -4,7 +4,7 @@
 
 A pure MoonBit decoder for MPEG-1, MPEG-2, and MPEG-2.5 Layer III. It accepts compressed `Bytes` and returns interleaved f32 PCM at the source sample rate. The decoding core has no third-party runtime dependency and supports the `native`, `wasm`, `wasm-gc`, and `js` backends.
 
-The library offers whole-input and synchronous incremental decoding. A native MP3-to-WAV command and a browser playback demo are included. On the fixed local benchmark, native and wasm release builds exceeded the 10x and 1x realtime targets. Full ISO vector acceptance and robustness coverage remain incomplete; see the [measured results](docs/TEST_RESULTS.md).
+The library offers whole-input and synchronous incremental decoding. A native MP3-to-WAV command and a browser playback demo are included. On the fixed local benchmark, native and wasm release builds exceeded the 10x and 1x realtime targets. Strict decoding and explicit compatibility recovery are available; see the declared acceptance scope and [measured results](docs/TEST_RESULTS.md).
 
 ## Supported input and boundaries
 
@@ -12,7 +12,7 @@ The library offers whole-input and synchronous incremental decoding. A native MP
 - Long, short, and mixed blocks; CBR, VBR, ABR, bounded free-format, and bit reservoir.
 - Original sample rate and channel count are preserved. Stereo samples are interleaved left, right, left, right.
 - Xing frames, encoder delay, and padding are not removed. CRC fields are skipped but not checked.
-- A damaged frame, missing reservoir history, truncated input, or an in-stream format change returns a structured error. The decoder does not skip corrupt frames and resume.
+- Strict mode rejects missing reservoir history, truncated input, and format changes. Compatible mode recovers only the four documented cases below. Corruption, history gaps after output, and sample-rate/version changes remain fatal.
 - The 8 kHz mixed-block path uses a bounded corrected frequency-band layout; its reference evidence is narrower than the regular corpus. See the [Layer III notes](internal/layer3/README.md).
 
 ## Use the library
@@ -34,7 +34,7 @@ let channels = audio.channels
 let pcm = audio.samples
 ```
 
-`decode_all` raises `Mp3Error` for invalid input or a resource limit. The `samples` field is an interleaved `Array[Float]`. The legacy `decode_mpeg1` entry point only accepts coded-bitrate MPEG-1 Layer III; it is not the compatibility mode proposed below.
+`decode_all` raises `Mp3Error` for invalid input or a resource limit. The `samples` field is an interleaved `Array[Float]`. The legacy `decode_mpeg1` entry point only accepts coded-bitrate MPEG-1 Layer III; it is not compatibility mode.
 
 For streaming, create `@mp3.Decoder::new()`, pass bytes to `push(input, offset?)`, and call `next_frame()` until it returns `NeedMoreInput`. Keep bytes that `push` did not accept; a return value of zero means the decoder needs to consume a frame first. After all input has been accepted, call `finish_input()` and continue until `EndOfInput`. `Frame(PcmFrame)` contains caller-owned PCM, sample rate, channels, and source byte offset. Fatal decoding errors lock the decoder until `reset()`. The [API reference](docs/API.en.md) describes limits and every error constructor.
 
@@ -81,28 +81,32 @@ The cross-backend suite requires Python 3.11+, GCC/MinGW with `ar`, FFmpeg/FFpro
 
 `moon package --list` previews the local archive; `.moonignore` omits repository-only corpora and validation tools. This packaging check does not upload or publish the module.
 
-## Next steps and maintenance
+## Strict and compatibility modes
 
-These are candidate tasks, not supported features or a release schedule. The first priority is to close the current acceptance gaps:
+`decode_all`, `decode_mpeg1`, and the default `Decoder`/`decode_frames` use strict mode. Select compatibility explicitly:
 
-1. **Conformance:** address the four remaining minimp3 ISO-subset vectors under the strict and compatibility mode proposal below, then validate complete PCM against the reference.
-2. **Robustness:** extend the FFmpeg differential matrix across bitrates and channel modes, especially Dual Channel. Execute all 16 saved malformed inputs as decoder tests, then expand seeded, long-input, and chunked fuzzing. Record inputs, thresholds, timeouts, and failures while checking all four backends for panics, traps, and hangs.
-3. **Performance across environments:** measure decoding speed and memory in browsers and additional operating systems. Keep tracking native and wasm release regressions on fixed inputs, without treating the local MoonBit runtime result as a browser benchmark.
+```moonbit
+let stream = @mp3.decode_frames(mp3_bytes, mode=Compatible)
+let frames = stream.frames
+let recoveries = stream.recoveries
+```
 
-### Strict and compatibility modes (proposed)
+`DecodedStream` preserves each frame's format and original offset without channel conversion. Incremental callers use `Decoder::new(mode=Compatible, on_recovery=event => println(event))`; the synchronous callback consumes events without accumulating them in the decoder. Fragmentation does not change PCM, offsets, or recovery records.
 
-The current behavior remains the default **strict mode**: incomplete frames, reserved emphasis values, missing reservoir history, and in-stream channel-count changes retain their existing errors. **Compatibility mode is not implemented and has no mode-selection parameter yet.** The proposed mode would permit only specified recoverable cases and record which input or output frames were skipped and why.
-
-| Vector | Proposed compatibility behavior |
+| Vector | Compatibility behavior |
 | --- | --- |
-| `compl.bit` | At confirmed EOF, discard the incomplete trailing frame, return preceding PCM, and record its offset and discarded byte count. |
-| `hecommon.bit` | Accept reserved emphasis while validating all other header fields; record the value and frame. |
-| `sin1k0db.bit` | Suppress PCM from initial frames that lack reservoir history while retaining their main data to build history; record skipped frames. Catching `InsufficientHistory` and continuing alone is insufficient. Apply the EOF rule above to its incomplete trailing frame. |
-| `he_mode.bit` | Preserve `PcmFrame.channels` for every frame. The single `Audio.channels` value returned by `decode_all` cannot represent a mixed-channel stream unchanged; a whole-input result type or an explicit caller-selected channel conversion remains to be designed. |
+| `compl.bit` | Discard an incomplete tail only after confirmed EOF; record its offset and discarded byte count. |
+| `hecommon.bit` | Accept reserved emphasis value 2 while validating other header fields; record the frame. No de-emphasis processing is applied. |
+| `sin1k0db.bit` | Initial frames lacking reservoir history emit no PCM but retain available history and main data; record required/available bytes and frame offsets. History gaps after the first output remain fatal. Apply the EOF rule to the tail. |
+| `he_mode.bit` | Preserve each `PcmFrame.channels` and record transitions. `decode_frames` returns a frame array; `decode_all` continues to reject channel changes. |
 
-Acceptance will report "strict mode rejected as expected" and "compatibility mode complete PCM matched pinned minimp3" separately. Strict rejection does not count as compatibility success. Until implementation and PCM comparison are complete, full ISO-subset PCM acceptance remains **7/11**.
+Strict PCM success, strict expected rejection, and compatible complete PCM success are separate acceptance results. Complete PCM must meet the frozen scalar minimp3 f32 and supplied s16 reference rules. The 11 vectors are the pinned minimp3 README's ISO subset, not the complete official ISO test package or certification.
 
-After those gates are stable, possible features include gapless trimming, CRC validation, seeking and indexing, fuller ID3 reading, and asynchronous input adapters. MP3 encoding, Layer I/II, SIMD, and fixed-point implementations remain separate longer-term work. Maintenance will keep toolchain and reference revisions traceable; version updates should rerun four-backend regression, differential corpora, examples, and performance baselines. Before any release, review support boundaries, licenses, and archive contents.
+## Maintenance and future work
+
+Run four-backend regression, malformed-input tests, the differential matrix, and compatible-mode acceptance for decoder changes. See [CI](docs/CI.md) for automation and platform locks, and [performance measurements](docs/PERFORMANCE.md) for browser and other-OS methods. Generated inputs, reproducible failures, and machine-readable results stay under ignored `target/`.
+
+Future demand may justify gapless trimming, CRC validation, seeking/indexing, fuller ID3 reading, or asynchronous adapters. MP3 encoding, Layer I/II, SIMD, and fixed-point implementations are separate work. Review support boundaries, licenses, package contents, and consumer imports before release.
 
 ## License
 

@@ -154,7 +154,11 @@ pub fn read_side_info(
   free_format_size? : Int,
 ) -> SideInfo raise DecodeError {
   let mpeg1 = header.version == @header.Mpeg1
-  match @header.parse(frame) {
+  match
+    @header.parse(
+      frame,
+      allow_reserved_emphasis=header.emphasis == @header.ReservedValue,
+    ) {
     Ok(parsed) if parsed == header => ()
     _ => raise InvalidFrame("frame header differs from parsed header")
   }

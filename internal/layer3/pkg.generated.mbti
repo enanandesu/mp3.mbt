@@ -25,8 +25,9 @@ pub struct FrameDecoder {
   qmf : Array[Float]
   mut previous : @header.Header?
   mut failed : Bool
+  mut has_output : Bool
 }
-pub fn FrameDecoder::decode_frame(Self, Bytes, free_format_size? : Int) -> Array[Float] raise DecodeError
+pub fn FrameDecoder::decode_frame(Self, Bytes, free_format_size? : Int, compatible? : Bool, on_history_gap? : (Int, Int) -> Unit) -> Array[Float] raise DecodeError
 pub fn FrameDecoder::new() -> Self
 pub fn FrameDecoder::reset(Self) -> Unit
 

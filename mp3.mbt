@@ -35,7 +35,7 @@ pub fn decode_all(
 }
 
 ///|
-/// Compatibility entry point restricted to MPEG-1 with coded bitrate.
+/// Legacy strict entry point restricted to MPEG-1 with coded bitrate.
 pub fn decode_mpeg1(
   data : Bytes,
   max_output_samples? : Int = 64 * 1024 * 1024,

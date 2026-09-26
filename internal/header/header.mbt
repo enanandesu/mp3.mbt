@@ -23,6 +23,7 @@ pub(all) enum Emphasis {
   NoEmphasis
   FiftyFifteen
   CcitJ17
+  ReservedValue
 } derive(Eq, Show, Debug)
 
 ///|
@@ -58,7 +59,11 @@ pub struct Header {
 ///|
 /// Parse one header at the given offset, without scanning or reading payload.
 /// Truncated reports bytes actually available (0..3); invalid offsets are separate.
-pub fn parse(data : Bytes, offset? : Int = 0) -> Result[Header, HeaderError] {
+pub fn parse(
+  data : Bytes,
+  offset? : Int = 0,
+  allow_reserved_emphasis? : Bool = false,
+) -> Result[Header, HeaderError] {
   if offset < 0 || offset > data.length() {
     return Err(InvalidOffset(offset))
   }
@@ -96,7 +101,12 @@ pub fn parse(data : Bytes, offset? : Int = 0) -> Result[Header, HeaderError] {
     0 => NoEmphasis
     1 => FiftyFifteen
     3 => CcitJ17
-    _ => return Err(ReservedEmphasis)
+    _ =>
+      if allow_reserved_emphasis {
+        ReservedValue
+      } else {
+        return Err(ReservedEmphasis)
+      }
   }
   // minimp3 halfrate[is_mpeg1][0], multiplied by two, Layer III only.
   let rates = if version == Mpeg1 {

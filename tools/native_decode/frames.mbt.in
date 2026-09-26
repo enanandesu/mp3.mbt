@@ -1,0 +1,27 @@
+// Validation-only I/O. Each PCM frame keeps its original format and offset.
+///|
+extern "C" fn input_length() -> Int = "validation_input_length"
+///|
+extern "C" fn input_byte(index : Int) -> Int = "validation_input_byte"
+///|
+extern "C" fn output_sample(value : Float) -> Unit = "validation_output_sample"
+///|
+extern "C" fn close_output() -> Unit = "validation_close_output"
+///|
+extern "C" fn fail() -> Unit = "validation_fail"
+///|
+fn main {
+  let size = input_length()
+  let data = Bytes::from_array(Array::makei(size, i => input_byte(i).to_byte()))
+  try {
+    let stream = @mp3.decode_frames(data, mode=Compatible)
+    for frame in stream.frames {
+      for value in frame.samples { output_sample(value) }
+      println("FRAME \{frame.source_offset} \{frame.sample_rate} \{frame.channels} \{frame.samples.length()}")
+    }
+    for recovery in stream.recoveries { println("RECOVERY \{recovery}") }
+    close_output()
+  } catch {
+    error => { println(error); fail() }
+  }
+}

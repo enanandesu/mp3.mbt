@@ -38,9 +38,14 @@ The following intentional differences define the bounded frame interface:
 - Side information rejects reserved codebooks, invalid regions and invalid
   window fields. Private header/side-info bits cannot accidentally enable
   first-granule scfsi reuse. Unused fields have deterministic zero values.
-- Missing reservoir history, truncated frames and changing stream formats are
-  explicit errors. Reservoir storage retains at most 511 bytes. A fatal frame
-  locks the decoder until reset clears reservoir, overlap and synthesis history.
+- Strict mode rejects missing reservoir history and changing stream formats.
+  Explicit compatibility can accumulate initial reservoir history without PCM,
+  accept reserved emphasis, and retain channel transitions with unchanged DSP
+  state. Once PCM has been produced, insufficient history remains fatal. EOF
+  truncation recovery belongs to the outer transport. Reservoir storage retains
+  at most 511 bytes. A fatal frame locks the decoder until reset clears reservoir,
+  overlap and synthesis history. Unmodified `L3_restore_reservoir` followed by
+  `L3_save_reservoir` at bit position zero defines the initial-history recovery.
 - Returned PCM belongs to its caller. Later frames cannot overwrite it.
 - Free-format decoding requires an explicit `free_format_size`: the unpadded
   total frame length, including header and side information. Its maximum is

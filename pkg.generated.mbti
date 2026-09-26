@@ -10,6 +10,8 @@ import {
 // Values
 pub fn decode_all(Bytes, limits? : Limits) -> Audio raise Mp3Error
 
+pub fn decode_frames(Bytes, mode? : DecodeMode, limits? : Limits) -> DecodedStream raise Mp3Error
+
 pub fn decode_mpeg1(Bytes, max_output_samples? : Int, max_initial_scan? : Int) -> Audio raise Mp3Error
 
 // Errors
@@ -37,16 +39,26 @@ pub struct Audio {
   samples : Array[Float]
 }
 
+pub(all) enum DecodeMode {
+  Strict
+  Compatible
+} derive(Eq, Show, @debug.Debug)
+
 pub(all) enum DecodeResult {
   Frame(PcmFrame)
   NeedMoreInput
   EndOfInput
 } derive(Show, @debug.Debug)
 
+pub struct DecodedStream {
+  frames : Array[PcmFrame]
+  recoveries : Array[Recovery]
+} derive(Show, @debug.Debug)
+
 type Decoder
 pub fn Decoder::buffered_bytes(Self) -> Int
 pub fn Decoder::finish_input(Self) -> Unit raise Mp3Error
-pub fn Decoder::new(limits? : Limits) -> Self raise Mp3Error
+pub fn Decoder::new(limits? : Limits, mode? : DecodeMode, on_recovery? : (Recovery) -> Unit) -> Self raise Mp3Error
 pub fn Decoder::next_frame(Self) -> DecodeResult raise Mp3Error
 pub fn Decoder::push(Self, Bytes, offset? : Int) -> Int raise Mp3Error
 pub fn Decoder::reset(Self) -> Unit
@@ -66,6 +78,13 @@ pub struct PcmFrame {
   source_offset : Int64
   samples : Array[Float]
 } derive(Show, @debug.Debug)
+
+pub(all) enum Recovery {
+  TruncatedTail(offset~ : Int64, discarded_bytes~ : Int)
+  ReservedEmphasis(offset~ : Int64, value~ : Int)
+  MissingHistory(offset~ : Int64, frame_bytes~ : Int, required~ : Int, available~ : Int)
+  ChannelChange(offset~ : Int64, previous~ : Int, current~ : Int)
+} derive(Eq, Show, @debug.Debug)
 
 // Type aliases
 

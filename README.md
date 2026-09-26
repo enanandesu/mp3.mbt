@@ -4,7 +4,7 @@
 
 提供整段与同步增量解码 API，以及独立的 MP3→WAV 命令和浏览器播放示例。
 
-性能目标已在固定本机环境通过；完整 ISO 向量与鲁棒性覆盖尚未全部验收，具体结果见[测试结果](docs/TEST_RESULTS.md)。
+提供默认严格模式和显式兼容模式；验收范围、固定参考 PCM 对照及性能实测见[测试结果](docs/TEST_RESULTS.md)。
 
 [English](README.en.md)
 
@@ -82,11 +82,11 @@ let channels = audio.channels
 let samples = audio.samples
 ```
 
-`mp3_bytes` 是调用方提供的 `Bytes`；`samples` 为交织 `Array[Float]`。`decode_all` 在没有音频、输入损坏或触及资源限额时抛出 `Mp3Error`。`decode_mpeg1` 是只接受普通码率 MPEG-1 Layer III 的旧入口，并非下文规划的兼容模式。
+`mp3_bytes` 是调用方提供的 `Bytes`；`samples` 为交织 `Array[Float]`。`decode_all` 在没有音频、输入损坏或触及资源限额时抛出 `Mp3Error`。`decode_mpeg1` 是只接受普通码率 MPEG-1 Layer III 的旧入口，不是兼容模式。
 
 ## 增量解码
 
-`Decoder::new(limits?)` 创建独立的解码状态和固定容量输入缓冲。调用顺序如下：
+`Decoder::new(limits?, mode?, on_recovery?)` 创建独立的解码状态和固定容量输入缓冲。调用顺序如下：
 
 1. 用 `push(input, offset?)` 提交字节，并保存未被接收的部分；返回值是实际接收的字节数。
 2. 反复调用 `next_frame()`：`Frame(frame)` 提供一帧 PCM；`NeedMoreInput` 表示需要更多字节；`EndOfInput` 表示已结束。
@@ -99,7 +99,7 @@ let samples = audio.samples
 ## 已知边界
 
 - 不自动裁剪 Xing 帧、encoder delay 或 padding；CRC 字段会跳过，但不会校验。
-- 遇到中途损坏、历史不足、不完整帧或音频格式变化会报错，不自动跳过坏帧。
+- 严格模式遇到历史不足、不完整帧或格式变化会报错。兼容模式仅恢复下述四类情况；中途损坏、开始输出后的历史不足、采样率或 MPEG 版本变化仍报错。
 - 8 kHz mixed block 使用有界频带布局，与未修改的 minimp3 在该路径有已知差异；证据范围见 [Layer III 说明](internal/layer3/README.md)。
 
 ## 开发与验证
@@ -131,28 +131,32 @@ node tools/test_browser_decode.mjs
 
 浏览器交互测试可选：先运行上述 HTTP 服务，并执行 `npm install --prefix target/browser-test playwright-core --no-save --no-package-lock --ignore-scripts`，然后运行 `node tools/test_browser_ui.mjs`。默认使用 Windows Edge；其他系统可通过 `EDGE_PATH` 指定 Chromium 可执行文件。以上安装仅进入被忽略的 `target/`，不是库的运行时依赖。
 
-## 下一阶段与维护方向
+## 严格模式与兼容模式
 
-以下是候选工作，不代表已支持的功能或确定的发布时间表。优先补齐现有验收缺口：
+`decode_all`、`decode_mpeg1` 和未指定模式的 `Decoder`、`decode_frames` 均使用严格模式。需要兼容模式时使用逐帧整段结果：
 
-1. **符合性**：按下述严格/兼容模式方案处理剩余 4 个 minimp3 ISO 子集向量，再以完整 PCM 对照结果验收。
-2. **鲁棒性**：补足 FFmpeg 差分语料的码率和声道模式组合，尤其是 Dual Channel；让已保存的 16 个异常文件进入实际解码测试，并扩展固定种子、长输入和分块模糊测试。记录语料、阈值、超时和失败样本，持续检查四后端是否出现 panic、陷阱或卡死。
-3. **跨环境性能**：在浏览器和更多操作系统上分别测量解码与内存占用；继续以固定语料和 release 配置跟踪 native、wasm 的回归，避免把本机 MoonBit 运行时数据当作浏览器性能。
+```moonbit
+let stream = @mp3.decode_frames(mp3_bytes, mode=Compatible)
+let frames = stream.frames
+let recoveries = stream.recoveries
+```
 
-### 严格模式与兼容模式（规划）
+`DecodedStream` 保留每个 `PcmFrame` 的格式和原始偏移，不隐式转换声道。增量接口使用 `Decoder::new(mode=Compatible, on_recovery=event => println(event))`；回调同步消费恢复事件，解码器不累计事件。输入分块不会改变 PCM、偏移或恢复记录。
 
-当前解码行为作为默认的**严格模式**保留：遇到不完整帧、保留的 emphasis 值、缺少 reservoir 历史或流内声道数变化时，继续按现有错误契约报错。**兼容模式尚未实现，也没有模式选择参数**；规划中它只容忍明确列出的可恢复情况，并记录跳过的输入或未输出的帧及其原因。
-
-| 向量 | 规划的兼容模式行为 |
+| 向量 | 兼容模式行为 |
 | --- | --- |
-| `compl.bit` | 确认文件结束后丢弃不完整尾帧，返回此前的 PCM，记录尾帧偏移与丢弃字节数。 |
-| `hecommon.bit` | 接受保留的 emphasis 值，仍校验帧头其他字段，记录该保留值与所在帧。 |
-| `sin1k0db.bit` | 对起始阶段缺少历史、无法解码的帧不输出 PCM，但保存其 main data 以积累 reservoir 历史；记录跳过的帧。不能只捕获 `InsufficientHistory` 后继续。其不完整尾帧也按上述 EOF 规则处理。 |
-| `he_mode.bit` | 逐帧保留 `PcmFrame.channels`。现有 `decode_all` 的 `Audio.channels` 只有一个值，无法原样表示混合声道流；整段 API 的返回形式或由调用方明确选择的统一声道转换方案仍待设计。 |
+| `compl.bit` | 确认 EOF 后丢弃不完整尾帧，记录偏移和丢弃字节数；EOF 前继续等待输入。 |
+| `hecommon.bit` | 接受保留 emphasis 值 2，校验其他帧头字段并记录所在帧；不执行去加重处理。 |
+| `sin1k0db.bit` | 初始缺少 reservoir 历史的帧不输出 PCM，但保留可用历史和 main data；记录所需/已有历史及帧偏移。首次输出后的历史不足仍为致命错误。尾帧按 EOF 规则处理。 |
+| `he_mode.bit` | 保留每个 `PcmFrame.channels` 并记录声道变化；整段用 `decode_frames` 返回逐帧数组，`decode_all` 仍拒绝声道变化。 |
 
-验收将分别报告“严格模式按预期拒绝”和“兼容模式完整 PCM 与固定 minimp3 参考通过”。前者不能计入后者；在实现与对照测试完成前，ISO 子集仍是 **7/11** 项通过完整 PCM 验收。
+验收分别统计严格模式的完整 PCM 通过与预期拒绝，以及兼容模式的完整 PCM 通过。完整 PCM 需同时符合固定 minimp3 浮点参考及随附 s16 参考的冻结规则。该清单是 minimp3 README 的 11 项 ISO 子集，不是完整 ISO 官方认证。
 
-在上述验收稳定后，可按实际需求评估 gapless 裁剪、CRC 校验、seek/索引、更完整的 ID3 读取及异步输入适配。MP3 编码、Layer I/II、SIMD 和定点实现仍属于更远期的独立范围。维护上将保持工具链与参考实现版本可追溯，更新版本时重跑四后端回归、差分语料、示例和性能基线；发布前复核支持边界、许可证与打包清单。
+## 维护与后续方向
+
+每次修改运行四后端回归、异常语料、差分矩阵与兼容模式验收。自动化配置及平台工具链说明见 [CI](docs/CI.md)，浏览器与其他操作系统的实测方法见 [性能测量](docs/PERFORMANCE.md)。验证脚本将生成语料、失败复现输入和机器可读报告保存在被忽略的 `target/`。
+
+可按实际需求继续评估 gapless 裁剪、CRC 校验、seek/索引、更完整的 ID3 读取及异步输入适配。MP3 编码、Layer I/II、SIMD 和定点实现属于独立范围。发布前复核支持边界、许可证、打包清单和使用方导入验证。
 
 ## 许可证
 

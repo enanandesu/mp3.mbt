@@ -25,9 +25,9 @@
 | 函数 | 用途 |
 | --- | --- |
 | `decode_all(data: Bytes, limits?: Limits) -> Audio raise Mp3Error` | 解码所有支持的 Layer III 版本，使用增量解码器的同一状态机 |
-| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | 旧入口；只接受普通码率的 MPEG-1 Layer III，不接受 free-format；不是规划中的兼容模式 |
+| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | 旧入口；只接受普通码率的 MPEG-1 Layer III，不接受 free-format；不是兼容模式 |
 
-`data` 是完整的 MP3 字节内容，文件读取由调用方完成。两者均会累计输出，并在没有音频帧时抛出 `NoAudio`。`decode_all` 可通过 `limits` 调整输入与输出限额；`decode_mpeg1` 使用其余默认限额，两个可选参数默认分别为 `67108864` 和 `65536`。`max_output_samples` 计数单位是**交织采样**，因此一帧 1152 采样的立体声会占用 2304 个名额。
+`data` 是完整的 MP3 字节内容，文件读取由调用方完成。这些整段接口均会累计输出，并在没有音频帧时抛出 `NoAudio`。`decode_all` 可通过 `limits` 调整输入与输出限额；`decode_mpeg1` 使用其余默认限额，两个可选参数默认分别为 `67108864` 和 `65536`。`max_output_samples` 计数单位是**交织采样**，因此一帧 1152 采样的立体声会占用 2304 个名额。
 
 ```moonbit
 let audio = @mp3.decode_all(mp3_bytes)
@@ -38,18 +38,35 @@ let interleaved_pcm = audio.samples
 
 `mp3_bytes` 为调用方提供的 `Bytes`。对长音频或需要持续输入的场景，使用下方的 `Decoder`，以免把全部 PCM 累积在一个 `Audio` 中。
 
+## 兼容模式与逐帧整段输出
+
+`decode_frames(data: Bytes, mode?: DecodeMode, limits?: Limits) -> DecodedStream raise Mp3Error` 返回 `frames: Array[PcmFrame]` 和 `recoveries: Array[Recovery]`。默认模式是 `Strict`；`mode=Compatible` 显式启用恢复。逐帧格式避免把单/双声道切换的流误表示为一个 `Audio.channels`，不做隐式声道转换。所有样本和记录归调用方所有。
+
+`max_output_samples` 统计所有帧的交织采样总量。没有任何输出帧时抛出 `NoAudio`，包括仅有起始历史不足帧的输入；需要保留失败之前的 PCM/诊断时使用增量接口。
+
+| `Recovery` | 含义 |
+| --- | --- |
+| `TruncatedTail(offset~, discarded_bytes~)` | EOF 已确认，丢弃不完整尾帧或合法帧头前缀 |
+| `ReservedEmphasis(offset~, value~)` | 接受值 2；其他头字段仍校验，不执行去加重 |
+| `MissingHistory(offset~, frame_bytes~, required~, available~)` | 初始帧未输出 PCM，但保存 main data 和可用历史；单位均为字节 |
+| `ChannelChange(offset~, previous~, current~)` | 声道数切换，后续 `PcmFrame` 使用新的声道数 |
+
+`offset` 为原输入字节偏移。记录按处理顺序产生。同帧多个事件依次为 emphasis、声道变化、历史不足。中途损坏、开始输出后的历史不足、版本/采样率变化仍为致命错误；兼容模式不扫描跳过中途坏帧。
+
+增量创建示例：`Decoder::new(mode=Compatible, on_recovery=event => println(event))`。恢复回调在 `next_frame()` 内同步执行，不应重入同一实例。解码器不保存回调事件；未提供回调时直接丢弃记录，因此增量解码的内部内存不随历史事件增长。`reset()` 清空解码历史，保留模式和回调。
+
 ## 增量解码
 
 `Decoder` 是有状态的同步解码器。每个实例拥有自己的输入缓冲、bit reservoir、IMDCT overlap 和合成滤波历史。
 
 | 方法 | 行为 |
 | --- | --- |
-| `Decoder::new(limits?: Limits) -> Decoder raise Mp3Error` | 创建解码器；非法限额抛出 `InvalidLimits` |
+| `Decoder::new(limits?: Limits, mode?: DecodeMode, on_recovery?: (Recovery) -> Unit) -> Decoder raise Mp3Error` | 创建解码器；非法限额抛出 `InvalidLimits` |
 | `push(input: Bytes, offset?: Int) -> Int raise Mp3Error` | 从 `input[offset:]` 复制能接收的字节，返回实际接收数；`offset` 默认 0 |
 | `next_frame() -> DecodeResult raise Mp3Error` | 尝试解码下一帧或报告等待输入/结束 |
 | `finish_input() -> Unit raise Mp3Error` | 所有字节已被 `push` 接收后声明 EOF；重复调用无害 |
 | `buffered_bytes() -> Int` | 尚未消费的压缩输入字节数，不包含已返回的 PCM |
-| `reset() -> Unit` | 清空输入、EOF、失败状态和解码历史；保留创建时的限额 |
+| `reset() -> Unit` | 清空输入、EOF、失败状态和解码历史；保留创建时的限额、模式和恢复回调 |
 
 `DecodeResult` 有三种结果：
 
@@ -79,7 +96,7 @@ let audio = @mp3.decode_all(mp3_bytes, limits~)
 | `max_tag_bytes` | 16777216 | 单个前置 ID3v2 标签的最大总字节数，含头部和可选 footer；必须非负 |
 | `max_initial_scan` | 65536 | 第一个合法帧前最多跳过的非标签字节数；必须非负 |
 | `max_free_format_bytes` | 2304 | free-format 无 padding 的总帧长上限，范围 4..2304 |
-| `max_output_samples` | 67108864 | 仅用于 `decode_all` 和 `decode_mpeg1` 的交织采样总量上限；必须非负 |
+| `max_output_samples` | 67108864 | 用于 `decode_all`、`decode_mpeg1` 和 `decode_frames` 的交织采样总量上限；必须非负 |
 
 输入缓冲还需满足 `max_buffer_bytes >= 2 * (max_free_format_bytes + 1) + 4 + 355`，默认 free-format 限额下最少为 4969 字节，以容纳帧边界前看和可能的尾标签。增量接口不累计已输出的 PCM，也不会按 `max_output_samples` 限制整个流的总输出；调用方决定保留多少 `PcmFrame`。
 
@@ -104,11 +121,11 @@ let audio = @mp3.decode_all(mp3_bytes, limits~)
 | `InputFinished` | `finish_input()` 之后再次 `push` |
 | `FailedDecoder` | 致命错误后的解码器尚未 `reset()` |
 
-错误中的 `offset` 是相对原始输入的字节偏移。`InvalidInputOffset` 和 `InputFinished` 是调用方式错误，不会单独将正常解码器置为失败状态；由 `next_frame()` 抛出的解析或解码错误会锁定实例。连续码率变化允许发生，但版本、采样率、声道数与普通码率/free-format 形态必须保持一致。
+错误中的 `offset` 是相对原始输入的字节偏移。`InvalidInputOffset` 和 `InputFinished` 是调用方式错误，不会单独将正常解码器置为失败状态；由 `next_frame()` 抛出的解析或解码错误会锁定实例。连续码率变化允许发生。严格模式要求版本、采样率、声道数与普通码率/free-format 形态保持一致；兼容模式允许声道数变化。
 
 ## 解析边界
 
 - 仅开头允许跳过 ID3v2 和有限的非标签字节；开始解码后不自动跳过损坏帧。
 - 帧边界处支持 ID3v1/TAG+ 尾标签；CRC 字段会跳过，但不校验。
-- free-format 初次发现通常需要三个间距一致的兼容帧头；确认 EOF 时可接受恰好两个完整帧，不猜测孤立帧长度。
+- free-format 初次发现通常需要三个扣除 padding 后帧长一致的兼容帧头（实际间距可相差一个 padding 字节）；确认 EOF 时可接受恰好两个完整帧，不猜测孤立帧长度。
 - 8 kHz mixed block 与未修改的 minimp3 存在已记录的参考差异，见 [Layer III 说明](../internal/layer3/README.md)。

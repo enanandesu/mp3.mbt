@@ -23,7 +23,7 @@ Stereo ordering is left, right, left, right. Each MPEG-1 frame yields 1152 sampl
 | Function | Behavior |
 | --- | --- |
 | `decode_all(data: Bytes, limits?: Limits) -> Audio raise Mp3Error` | Decode all supported Layer III versions through the incremental state machine. |
-| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | Legacy entry point for coded-bitrate MPEG-1 Layer III only; free-format is rejected. This is not the proposed compatibility mode. |
+| `decode_mpeg1(data: Bytes, max_output_samples?: Int, max_initial_scan?: Int) -> Audio raise Mp3Error` | Legacy entry point for coded-bitrate MPEG-1 Layer III only; free-format is rejected. This is not compatibility mode. |
 
 `data` contains complete MP3 bytes, supplied by the caller. Both helpers accumulate all samples and raise `NoAudio` if no frame is decoded. `max_output_samples` counts interleaved samples; a 1152-sample stereo frame consumes 2304 positions. `decode_mpeg1` defaults to 67108864 output samples and a 65536-byte initial scan, while other limits retain their defaults.
 
@@ -34,18 +34,35 @@ let channels = audio.channels
 let pcm = audio.samples
 ```
 
+## Compatibility and frame-preserving whole-input output
+
+`decode_frames(data: Bytes, mode?: DecodeMode, limits?: Limits) -> DecodedStream raise Mp3Error` returns `frames: Array[PcmFrame]` and `recoveries: Array[Recovery]`. The default mode is `Strict`; use `mode=Compatible` to recover the cases below. Per-frame metadata represents mono/stereo transitions without a misleading stream-wide channel count. No channel conversion is performed; returned samples and records belong to the caller.
+
+`max_output_samples` counts all interleaved samples across frames. Producing no decoded frame raises `NoAudio`, including input containing only initial history gaps. Use the incremental API to retain PCM and diagnostics preceding a fatal error.
+
+| `Recovery` | Meaning |
+| --- | --- |
+| `TruncatedTail(offset~, discarded_bytes~)` | Confirmed EOF discards an incomplete frame or valid partial frame header. |
+| `ReservedEmphasis(offset~, value~)` | Accept value 2; still validate other header fields. No de-emphasis is applied. |
+| `MissingHistory(offset~, frame_bytes~, required~, available~)` | Initial frame emits no PCM but retains main data and available history. Counts are bytes. |
+| `ChannelChange(offset~, previous~, current~)` | Subsequent frame metadata uses the new channel count. |
+
+Offsets are original compressed-input byte offsets. Records follow processing order; events on the same frame are emphasis, channel change, then missing history. Corruption, history gaps after the first PCM output, and version/sample-rate changes remain fatal. Compatibility does not resynchronize across damaged midstream frames.
+
+Use `Decoder::new(mode=Compatible, on_recovery=event => println(event))` for incremental recovery. The callback runs synchronously inside `next_frame()` and must not reenter the same decoder. The decoder retains no event history; an omitted callback discards events, keeping incremental internal memory bounded. `reset()` clears decoding history and preserves mode/callback.
+
 ## Incremental decoding
 
 `Decoder` owns independent input buffering, bit reservoir, IMDCT overlap, and synthesis history.
 
 | Method | Behavior |
 | --- | --- |
-| `Decoder::new(limits?: Limits) -> Decoder raise Mp3Error` | Create a decoder; invalid limits raise `InvalidLimits`. |
+| `Decoder::new(limits?: Limits, mode?: DecodeMode, on_recovery?: (Recovery) -> Unit) -> Decoder raise Mp3Error` | Create a decoder; invalid limits raise `InvalidLimits`. |
 | `push(input: Bytes, offset?: Int) -> Int raise Mp3Error` | Copy as many bytes as fit from `input[offset:]`; return the accepted byte count. Default offset is 0. |
 | `next_frame() -> DecodeResult raise Mp3Error` | Return a decoded frame, request more bytes, or signal the end. |
 | `finish_input() -> Unit raise Mp3Error` | Confirm EOF after every byte has been accepted; repeated calls are harmless. |
 | `buffered_bytes() -> Int` | Compressed input bytes still buffered, excluding returned PCM. |
-| `reset() -> Unit` | Clear input, EOF, failure state, and decoding history while preserving configured limits. |
+| `reset() -> Unit` | Clear input, EOF, failure state, and decoding history while preserving configured limits, mode, and recovery callback. |
 
 `DecodeResult` is `Frame(PcmFrame)`, `NeedMoreInput`, or `EndOfInput`. Retain bytes that `push` did not accept. If it returns zero, consume output with `next_frame()` and retry at the same offset. Call `finish_input()` only after all input is accepted, then read until `EndOfInput`. An empty incremental stream may end normally, unlike `decode_all`, which raises `NoAudio`.
 
@@ -81,7 +98,7 @@ All public errors are constructors of `Mp3Error`:
 | `TruncatedFrame(offset, length)` | At EOF, this frame lacks bytes for its expected `length`. |
 | `UnsupportedVersion` | `decode_mpeg1` encountered a non-MPEG-1 frame. |
 | `UnsupportedFreeFormat` | `decode_mpeg1` encountered free-format. |
-| `OutputLimit` | Whole-input output exceeded its sample cap; also used for negative compatibility-helper limits. |
+| `OutputLimit` | Whole-input output exceeded its sample cap; also used for negative `decode_mpeg1` limits. |
 | `NoAudio` | Whole-input decoding ended without an audio frame. |
 | `DecodeFailure(offset, cause)` | Layer III decoding failed; `cause` retains the lower-level error. |
 | `FramingFailure(offset, cause)` | Frame length or free-format boundary detection failed. |
@@ -91,6 +108,6 @@ All public errors are constructors of `Mp3Error`:
 | `InputFinished` | `push` was called after `finish_input`. |
 | `FailedDecoder` | Fatal error occurred and the decoder has not been reset. |
 
-Offsets are relative to the original input bytes. `InvalidInputOffset` and `InputFinished` are usage errors and do not by themselves lock an otherwise healthy decoder. Bitrate changes are allowed; version, sample rate, channel count, and coded/free-format mode changes are rejected.
+Offsets are relative to the original input bytes. `InvalidInputOffset` and `InputFinished` are usage errors and do not by themselves lock an otherwise healthy decoder. Bitrate changes are allowed. Strict mode rejects version, sample-rate, channel-count, and coded/free-format changes; Compatible additionally allows channel-count changes.
 
-Leading ID3v2 tags and a bounded amount of leading non-tag data can be skipped. ID3v1/TAG+ trailers are accepted at frame boundaries; CRC fields are skipped without validation. Free-format discovery generally needs three compatible headers at equal spacing, or exactly two complete frames at confirmed EOF. The 8 kHz mixed-block path has a documented difference from unmodified minimp3; see the [Layer III notes](../internal/layer3/README.md).
+Leading ID3v2 tags and a bounded amount of leading non-tag data can be skipped. ID3v1/TAG+ trailers are accepted at frame boundaries; CRC fields are skipped without validation. Free-format discovery generally needs three compatible headers with the same unpadded frame size (physical spacing may differ by one padding byte), or exactly two complete frames at confirmed EOF. The 8 kHz mixed-block path has a documented difference from unmodified minimp3; see the [Layer III notes](../internal/layer3/README.md).
